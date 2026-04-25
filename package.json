@@ -1,8 +1,19 @@
 {
-  "name": "vit",
+  "name": "@ajax-16/vit",
   "version": "0.0.2",
   "description": "CLI de versionado y changelog para Al-Andalus-Hispania",
   "type": "module",
+  "main": "index.js",
+  "license": "MIT",
+  "repository": "https://github.com/ajax-16/vit",
+  "author": "ajax-16",
+  "bugs": {
+    "url": "https://github.com/ajax-16/vit/issues"
+  },
+  "homepage": "https://github.com/ajax-16/vit#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "vit": "./index.js"
   },
