@@ -6,7 +6,7 @@ CLI interactivo de versionado y changelog.
 
 ```bash
 # Desde la raíz del proyecto
-node vit.js
+node index.js
 
 ```
 

@@ -1,6 +1,6 @@
 {
   "name": "vit",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "CLI de versionado y changelog para Al-Andalus-Hispania",
   "type": "module",
   "bin": {

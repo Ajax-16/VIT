@@ -1,5 +1,13 @@
 # Registro de cambios
 
+## [0.0.2] - 25/04/2026
+
+### 🐛 Corrección de errores
+
+- Modificado README.md
+
+
+
 ## [0.0.1] - 25/04/2026
 
 > Primera versión pública de VIT - Version It! CLI para versionado inteligente de proyectos npm.
