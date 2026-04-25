@@ -1,0 +1,17 @@
+{
+  "name": "vit",
+  "version": "0.0.1",
+  "description": "CLI de versionado y changelog para Al-Andalus-Hispania",
+  "type": "module",
+  "bin": {
+    "vit": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "inquirer": "^9.3.7",
+    "ora": "^8.1.1"
+  }
+}

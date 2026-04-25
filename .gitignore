@@ -1,0 +1,23 @@
+# Ignorar archivos de configuración de Vit
+vit-config.json
+node_modules/
+dist/
+build/
+# Ignorar archivos de log
+*.log
+# Ignorar archivos de entorno
+.env
+# Ignorar archivos de sistema
+.DS_Store
+Thumbs.db
+# Ignorar archivos de editor
+.vscode/
+.idea/
+# Ignorar archivos de prueba
+tests/
+__tests__/
+# Ignorar archivos de cobertura de pruebas
+coverage/
+# Ignorar archivos de dependencias
+package-lock.json
+yarn.lock
