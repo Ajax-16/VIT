@@ -1,55 +1,53 @@
-# Registro de cambios
+# Changelog
 
 ## [0.0.3] - 26/04/2026
 
 ### 🎨 Styles
 
-- *(Idioma)* Modificado idioma del cli para ser más accesible en general.
-
-
+- _(Language)_ CLI language changed to English for broader accessibility.
 
 ## [0.0.2] - 25/04/2026
 
-### 🐛 Corrección de errores
+### 🐛 Bug fixes
 
-- Modificado README.md
+- Updated README.md
 
 ## [0.0.1] - 25/04/2026
 
-> Primera versión pública de VIT - Version It! CLI para versionado inteligente de proyectos npm.
+> First public release of VIT - Version It! A smart CLI for npm project versioning.
 
-### 🚀 Funcionalidades
+### 🚀 Features
 
-- Sistema de versionado npm con bumps `patch`, `minor` y `major`
+- npm versioning system with `patch`, `minor` and `major` bumps
 
-- Configuración por `vit-config.json`
+- Configuration via `vit-config.json`
 
-- Soporte para uno o varios proyectos configurables
+- Support for one or multiple configurable projects
 
-- Generación y edición interactiva de changelog
+- Interactive changelog generation and editing
 
-- Sistema de tags configurable por proyecto mediante `tagPrefix`
+- Configurable tag system per project via `tagPrefix`
 
-- Integración con VCS configurable
+- Configurable VCS integration
 
-- Soporte para `git` y modo `none` sin repositorio
+- Support for `git` and `none` mode without a repository
 
-- Commit, tag y push automáticos cuando el proveedor VCS lo permite
+- Automatic commit, tag and push when the VCS provider allows it
 
-- Rollback a tags desde CLI cuando el proveedor VCS lo soporta
+- CLI rollback to tags when the VCS provider supports it
 
-### ⚡ Rendimiento
+### ⚡ Performance
 
-- Uso de `child_process` nativo para ejecutar operaciones de versionado y VCS
+- Uses native `child_process` to run versioning and VCS operations
 
-- Resolución simple y directa de proyectos desde `process.cwd()`
+- Simple and direct project resolution from `process.cwd()`
 
-### 🎨 Estilos
+### 🎨 Styles
 
-- Interfaz CLI coloreada con `chalk`
+- Colored CLI interface with `chalk`
 
-- Spinners de estado con `ora`
+- Status spinners with `ora`
 
-- Prompts interactivos con `inquirer`
+- Interactive prompts with `inquirer`
 
-- Resúmenes claros antes de ejecutar operaciones
+- Clear summaries before executing operations
