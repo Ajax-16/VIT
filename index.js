@@ -25,40 +25,40 @@ const branch = vcs.getCurrentBranch();
 const lastTag = vcs.getLastTag();
 
 console.log(chalk.dim(`  VCS         : `) + chalk.cyan(vcsLabel(config.vcs?.provider)));
-console.log(chalk.dim(`  Rama actual : `) + chalk.cyan(branch ?? "-"));
-if (lastTag) console.log(chalk.dim(`  Último tag  : `) + chalk.cyan(lastTag));
+console.log(chalk.dim(`  Current branch : `) + chalk.cyan(branch ?? "-"));
+if (lastTag) console.log(chalk.dim(`  Last tag  : `) + chalk.cyan(lastTag));
 console.log();
 
 const { accion } = await inquirer.prompt([
   {
     type: "list",
     name: "accion",
-    message: "¿Qué quieres hacer?",
+    message: "Welcome. What do you want to do?",
     choices: [
       {
-        name: "🚀  Nueva versión  — bump + changelog + commit",
+        name: "🚀  Version it!  — bump + changelog + commit",
         value: "release",
       },
       {
-        name: "📋  Solo changelog — añadir o editar entradas",
+        name: "📋  Changelog    — add or edit entries",
         value: "changelog",
       },
-      { name: "💾  Solo commit    — commit y push sin bump", value: "commit" },
-      { name: "⏪  Rollback       — retroceder a un tag", value: "rollback" },
-      { name: "❌  Salir", value: "exit" },
+      { name: "💾  Commit       — commit and push without bump", value: "commit" },
+      { name: "⏪  Rollback     — roll back to a tag", value: "rollback" },
+      { name: "❌  Exit", value: "exit" },
     ],
   },
 ]);
 
 if (accion === "exit") {
-  console.log(chalk.dim("\n  Hasta luego.\n"));
+  console.log(chalk.dim("\n  Bye.\n"));
   process.exit(0);
 }
 
 if ((accion === "commit" || accion === "rollback") && !vcs.supportsVersioning()) {
   console.log(
     chalk.yellow(
-      `\n  ⚠ El proveedor VCS actual (${vcsLabel(config.vcs?.provider)}) no soporta esta operación.\n`,
+      `\n  ⚠ The current VCS (${vcsLabel(config.vcs?.provider)}) does not support this operation.\n`,
     ),
   );
   process.exit(0);
@@ -68,7 +68,7 @@ if (accion === "rollback") {
   const tags = vcs.getAllTags();
 
   if (tags.length === 0) {
-    console.log(chalk.yellow("\n  ⚠ No hay tags disponibles.\n"));
+    console.log(chalk.yellow("\n  ⚠ No tags available.\n"));
     process.exit(0);
   }
 
@@ -76,7 +76,7 @@ if (accion === "rollback") {
     {
       type: "list",
       name: "selectedTag",
-      message: "Selecciona el tag al que retroceder:",
+      message: "Select the tag to rollback to:",
       choices: tags.map((t) => ({ name: t, value: t })),
       pageSize: 15,
     },
@@ -87,38 +87,38 @@ if (accion === "rollback") {
       type: "confirm",
       name: "confirmRollback",
       message: chalk.yellow(
-        `¿Confirmar rollback a ${selectedTag}? Esto modificará el historial.`,
+        `Confirm rollback to ${selectedTag}? This will modify the history.`,
       ),
       default: false,
     },
   ]);
 
   if (!confirmRollback) {
-    console.log(chalk.yellow("\n  Rollback cancelado.\n"));
+    console.log(chalk.yellow("\n  Rollback cancelled.\n"));
     process.exit(0);
   }
 
   const spinner = ora({
-    text: "Ejecutando rollback...",
+    text: "Executing rollback...",
     color: "yellow",
   }).start();
 
   try {
     vcs.rollbackToTag(selectedTag);
-    spinner.succeed(chalk.green(`Rollback a ${selectedTag} completado.`));
-    console.log(chalk.dim("\n  Los archivos han vuelto al estado del tag."));
+    spinner.succeed(chalk.green(`Rollback to ${selectedTag} completed.`));
+    console.log(chalk.dim("\n  The files have been reverted to the state of the tag."));
 
     if (vcs.supportsPush()) {
       console.log(
         chalk.dim(
-          "  Usa un push forzado si necesitas subir el rollback al remoto.\n",
+          "  Use a force push if you need to upload the rollback to the remote.\n",
         ),
       );
     } else {
       console.log();
     }
   } catch (err) {
-    spinner.fail(chalk.red("Error durante el rollback"));
+    spinner.fail(chalk.red("Error during rollback"));
     console.error("\n" + chalk.red(err.message) + "\n");
     process.exit(1);
   }
@@ -126,7 +126,7 @@ if (accion === "rollback") {
   const tagsAfter = vcs.getTagsAfter(selectedTag);
 
   if (tagsAfter.length > 0) {
-    console.log(chalk.dim(`\n  Tags posteriores a ${selectedTag}:`));
+    console.log(chalk.dim(`\n  Tags after ${selectedTag}:`));
     tagsAfter.forEach((t) => console.log(chalk.dim(`    · ${t}`)));
     console.log();
 
@@ -135,7 +135,7 @@ if (accion === "rollback") {
         type: "confirm",
         name: "deleteTags",
         message: chalk.yellow(
-          `¿Eliminar estos ${tagsAfter.length} tag(s)?`,
+          `Delete these ${tagsAfter.length} tag(s)?`
         ),
         default: false,
       },
@@ -143,7 +143,7 @@ if (accion === "rollback") {
 
     if (deleteTags) {
       const spinnerTags = ora({
-        text: "Eliminando tags...",
+        text: "Deleting tags...",
         color: "yellow",
       }).start();
 
@@ -152,14 +152,14 @@ if (accion === "rollback") {
           vcs.deleteTag(t);
         }
         spinnerTags.succeed(
-          chalk.green(`${tagsAfter.length} tag(s) eliminados.`),
+          chalk.green(`${tagsAfter.length} tag(s) deleted.`),
         );
       } catch (err) {
-        spinnerTags.fail(chalk.red("Error eliminando tags"));
+        spinnerTags.fail(chalk.red("Error deleting tags"));
         console.error("\n" + chalk.red(err.message) + "\n");
       }
     } else {
-      console.log(chalk.dim("  Tags conservados.\n"));
+      console.log(chalk.dim("  Tags preserved.\n"));
     }
   }
 
@@ -174,7 +174,7 @@ if (accion === "release") {
   const configuredProjects = config.projects ?? [];
 
   if (configuredProjects.length === 0) {
-    console.log(chalk.red("\n  ✖ No hay proyectos configurados en vit-config.json.\n"));
+    console.log(chalk.red("\n  ✖ No projects configured in vit-config.json.\n"));
     process.exit(1);
   }
 
@@ -184,12 +184,12 @@ if (accion === "release") {
     targets = [configuredProjects[0].id];
     console.log(
       chalk.green(
-        `\n  ✔ Proyecto seleccionado automáticamente: ${configuredProjects[0].label} (${configuredProjects[0].id})\n`,
+        `\n  ✔ Project selected automatically: ${configuredProjects[0].label} (${configuredProjects[0].id})\n`,
       ),
     );
   } else {
     const projectChoices = [
-      { name: "all — Todos los proyectos configurados", value: "__all__" },
+      { name: "all — All configured projects", value: "__all__" },
       ...configuredProjects.map((project) => ({
         name: `${project.id} — ${project.label} (${project.path})`,
         value: project.id,
@@ -200,10 +200,10 @@ if (accion === "release") {
       {
         type: "checkbox",
         name: "targets",
-        message: "¿Qué proyectos versionar?",
+        message: "Which projects to bump?",
         choices: projectChoices,
         validate: (value) =>
-          value.length > 0 || "Debes seleccionar al menos un proyecto",
+          value.length > 0 || "You must select at least one project",
       },
     ]);
 
@@ -216,11 +216,11 @@ if (accion === "release") {
     {
       type: "list",
       name: "bumpType",
-      message: "¿Tipo de bump?",
+      message: "What type of bump?",
       choices: [
-        { name: "patch — Corrección menor    (x.x.+1)", value: "patch" },
-        { name: "minor — Nueva funcionalidad  (x.+1.0)", value: "minor" },
-        { name: "major — Cambio grande        (+1.0.0)", value: "major" },
+        { name: "patch — Minor correction    (x.x.+1)", value: "patch" },
+        { name: "minor — New functionality  (x.+1.0)", value: "minor" },
+        { name: "major — Major change        (+1.0.0)", value: "major" },
       ],
       default: "patch",
     },
@@ -233,7 +233,7 @@ if (accion === "release") {
 
   console.log(
     chalk.green(
-      `\n  ✔ Bump configurado: ${bumpType} → ${targets.join(", ")}\n`,
+      `\n  ✔ Bump configured: ${bumpType} → ${targets.join(", ")}\n`,
     ),
   );
 }
@@ -244,11 +244,11 @@ if (accion === "release" || accion === "changelog") {
       {
         type: "list",
         name: "action",
-        message: "¿Qué hacer con el changelog?",
+        message: "What to do with the changelog?",
         choices: [
-          { name: "No tocar el changelog", value: "none" },
-          { name: "Añadir nueva entrada", value: "add" },
-          { name: "Editar versión existente", value: "edit" },
+          { name: "Do nothing", value: "none" },
+          { name: "Add new entry", value: "add" },
+          { name: "Edit existing version", value: "edit" },
         ],
         default: "none",
       },
@@ -273,31 +273,31 @@ if (accion !== "changelog") {
       type: "input",
       name: "message",
       message: vcs.supportsCommit()
-        ? "Mensaje de commit:"
-        : "Mensaje descriptivo de la operación:",
+        ? "Commit message:"
+        : "Descriptive message for the operation:",
       default: defaultMessage,
-      validate: (v) => v.trim().length > 0 || "El mensaje no puede estar vacío",
+      validate: (v) => v.trim().length > 0 || "The message cannot be empty",
     },
   ]);
   commitMessage = message;
 }
 
-console.log("\n" + chalk.bold("  Resumen de la operación:"));
+console.log("\n" + chalk.bold("  Operation summary:"));
 console.log(chalk.dim("  ─────────────────────────"));
-console.log(`  Acción    : ${chalk.cyan(accion)}`);
+console.log(`  Action    : ${chalk.cyan(accion)}`);
 console.log(`  VCS       : ${chalk.cyan(vcsLabel(config.vcs?.provider))}`);
 if (bumpResult) {
   console.log(`  Targets   : ${chalk.cyan(bumpResult.targets.join(", "))}`);
   console.log(`  Bump      : ${chalk.cyan(bumpResult.bumpType)}`);
 }
 if (commitMessage) {
-  console.log(`  Mensaje   : ${chalk.cyan(commitMessage)}`);
+  console.log(`  Message   : ${chalk.cyan(commitMessage)}`);
 }
 console.log(
   `  Changelog : ${changelogAction === "add"
-    ? chalk.green("nueva entrada")
+    ? chalk.green("new entry")
     : changelogAction === "edit"
-      ? chalk.yellow("editar existente")
+      ? chalk.yellow("edit existing")
       : chalk.dim("no")
   }`,
 );
@@ -309,7 +309,7 @@ if (accion === "changelog") {
   if (!canCommit) {
     console.log(
       chalk.yellow(
-        "\n  ⚠ El proveedor VCS actual no soporta commit/push. El changelog queda guardado localmente.\n",
+        "\n  ⚠ The current VCS provider does not support commit/push. The changelog will be saved locally.\n",
       ),
     );
     process.exit(0);
@@ -319,14 +319,14 @@ if (accion === "changelog") {
     {
       type: "confirm",
       name: "doCommit",
-      message: "¿Hacer commit y push del changelog?",
+      message: "Make commit and push of the changelog?",
       default: true,
     },
   ]);
 
   if (!doCommit) {
     console.log(
-      chalk.yellow("\n  Changelog guardado localmente. Sin commit.\n"),
+      chalk.yellow("\n  Changelog saved locally. No commit.\n"),
     );
     process.exit(0);
   }
@@ -335,9 +335,9 @@ if (accion === "changelog") {
     {
       type: "input",
       name: "message",
-      message: "Mensaje de commit:",
+      message: "Commit message:",
       default: config.git.changelogCommitMessage,
-      validate: (v) => v.trim().length > 0 || "El mensaje no puede estar vacío",
+      validate: (v) => v.trim().length > 0 || "The message cannot be empty",
     },
   ]);
   commitMessage = message;
@@ -346,18 +346,18 @@ if (accion === "changelog") {
     {
       type: "confirm",
       name: "proceed",
-      message: "¿Confirmar y ejecutar?",
+      message: "Confirm and execute?",
       default: true,
     },
   ]);
 
   if (!proceed) {
-    console.log(chalk.yellow("\n  Operación cancelada.\n"));
+    console.log(chalk.yellow("\n  Operation cancelled.\n"));
     process.exit(0);
   }
 }
 
-const spinner = ora({ text: "Ejecutando...", color: "yellow" }).start();
+const spinner = ora({ text: "Executing...", color: "yellow" }).start();
 
 try {
   if (accion === "release") {
@@ -369,7 +369,7 @@ try {
       vcs,
     });
 
-    spinner.succeed(chalk.green("¡Bump completado con éxito!"));
+    spinner.succeed(chalk.green("Bump completed successfully!"));
     console.log();
 
     for (const item of result.bumpedProjects) {
@@ -382,22 +382,22 @@ try {
 
     if (!vcs.supportsVersioning()) {
       console.log(
-        chalk.dim("  Nota        : se actualizaron versiones sin commit/tag/push."),
+        chalk.dim("  Note        : versions updated without commit/tag/push."),
       );
     }
   } else {
     vcs.addAll();
     vcs.commit(commitMessage);
     vcs.pushWithTags();
-    spinner.succeed(chalk.green("Operación completada correctamente"));
+    spinner.succeed(chalk.green("Operation completed successfully"));
   }
 
   console.log();
 } catch (err) {
-  spinner.fail(chalk.red("Error durante la ejecución"));
+  spinner.fail(chalk.red("Error during execution"));
   console.error("\n" + chalk.red(err.message));
   if (err.original)
-    console.error(chalk.dim("  Original: " + err.original.message));
+    console.error(chalk.dim("  Original cause: " + err.original.message));
   console.error(chalk.dim("\n" + err.stack) + "\n");
   process.exit(1);
 }
