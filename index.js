@@ -7,6 +7,7 @@ import { buildChangelog, editChangelog } from "./lib/changelog.js";
 import { loadVitConfig } from "./lib/config.js";
 import { getVcsAdapter, vcsLabel } from "./lib/vcs/index.js";
 import { printPostActionsSummary, runPostActions } from "./lib/post-actions.js";
+import { printPreActionsSummary, runPreActions } from "./lib/pre-actions.js";
 
 const config = loadVitConfig();
 const vcs = getVcsAdapter(config.vcs?.provider ?? "git");
@@ -33,11 +34,11 @@ const { accion } = await inquirer.prompt([
     name: "accion",
     message: "Welcome. What do you want to do?",
     choices: [
-      { name: "🚀  Version it!  — bump + changelog + commit", value: "release" },
-      { name: "📋  Changelog    — add or edit entries", value: "changelog" },
-      { name: "💾  Commit       — commit and push without bump", value: "commit" },
-      { name: "⏪  Rollback     — roll back to a tag", value: "rollback" },
-      { name: "❌  Exit", value: "exit" },
+      { name: "\uD83D\uDE80  Version it!  — bump + changelog + commit", value: "release" },
+      { name: "\uD83D\uDCCB  Changelog    — add or edit entries", value: "changelog" },
+      { name: "\uD83D\uDCBE  Commit       — commit and push without bump", value: "commit" },
+      { name: "\u23EA  Rollback     — roll back to a tag", value: "rollback" },
+      { name: "\u274C  Exit", value: "exit" },
     ],
   },
 ]);
@@ -50,7 +51,7 @@ if (accion === "exit") {
 if ((accion === "commit" || accion === "rollback") && !vcs.supportsVersioning()) {
   console.log(
     chalk.yellow(
-      `\n  ⚠ The current VCS (${vcsLabel(config.vcs?.provider)}) does not support this operation.\n`,
+      `\n  \u26A0 The current VCS (${vcsLabel(config.vcs?.provider)}) does not support this operation.\n`,
     ),
   );
   process.exit(0);
@@ -62,7 +63,7 @@ if (accion === "rollback") {
   const tags = vcs.getAllTags();
 
   if (tags.length === 0) {
-    console.log(chalk.yellow("\n  ⚠ No tags available.\n"));
+    console.log(chalk.yellow("\n  \u26A0 No tags available.\n"));
     process.exit(0);
   }
 
@@ -154,7 +155,7 @@ if (accion === "release") {
   const configuredProjects = config.projects ?? [];
 
   if (configuredProjects.length === 0) {
-    console.log(chalk.red("\n  ✖ No projects configured in vit-config.json.\n"));
+    console.log(chalk.red("\n  \u2716 No projects configured in vit-config.json.\n"));
     process.exit(1);
   }
 
@@ -163,7 +164,7 @@ if (accion === "release") {
   if (configuredProjects.length === 1) {
     targets = [configuredProjects[0].id];
     console.log(
-      chalk.green(`\n  ✔ Project selected automatically: ${configuredProjects[0].label} (${configuredProjects[0].id})\n`),
+      chalk.green(`\n  \u2714 Project selected automatically: ${configuredProjects[0].label} (${configuredProjects[0].id})\n`),
     );
   } else {
     const projectChoices = [
@@ -205,7 +206,7 @@ if (accion === "release") {
 
   bumpResult = { targets, bumpType };
 
-  console.log(chalk.green(`\n  ✔ Bump configured: ${bumpType} → ${targets.join(", ")}\n`));
+  console.log(chalk.green(`\n  \u2714 Bump configured: ${bumpType} \u2192 ${targets.join(", ")}\n`));
 }
 
 if (accion === "release" || accion === "changelog") {
@@ -266,25 +267,17 @@ if (commitMessage) {
   console.log(`  Message   : ${chalk.cyan(commitMessage)}`);
 }
 console.log(
-  `  Changelog : ${changelogAction === "add"
-    ? chalk.green("new entry")
-    : changelogAction === "edit"
-      ? chalk.yellow("edit existing")
-      : chalk.dim("no")
+  `  Changelog : ${
+    changelogAction === "add"
+      ? chalk.green("new entry")
+      : changelogAction === "edit"
+        ? chalk.yellow("edit existing")
+        : chalk.dim("no")
   }`,
 );
 
-// Show configured post-actions for this trigger
-const applicablePostActions = (config.postActions ?? []).filter((a) => {
-  const on = Array.isArray(a.on) ? a.on : [a.on ?? "release"];
-  return on.includes(accion);
-});
-if (applicablePostActions.length > 0) {
-  console.log(`  Post-actions:`);
-  applicablePostActions.forEach((a) =>
-    console.log(`    · ${chalk.dim(a.label ?? a.command)}`)
-  );
-}
+printPreActionsSummary(config.preActions ?? [], accion);
+printPostActionsSummary(config.postActions ?? [], accion);
 console.log();
 
 // ── Confirm & Execute ────────────────────────────────────────────────────────
@@ -294,7 +287,7 @@ if (accion === "changelog") {
 
   if (!canCommit) {
     console.log(
-      chalk.yellow("\n  ⚠ The current VCS provider does not support commit/push. The changelog will be saved locally.\n"),
+      chalk.yellow("\n  \u26A0 The current VCS provider does not support commit/push. The changelog will be saved locally.\n"),
     );
     process.exit(0);
   }
@@ -341,6 +334,9 @@ if (accion === "changelog") {
 
 // ── Run ──────────────────────────────────────────────────────────────────────
 
+// Pre-actions run BEFORE commit/bump/push
+await runPreActions(config.preActions ?? [], accion);
+
 const spinner = ora({ text: "Executing...", color: "yellow" }).start();
 
 try {
@@ -374,11 +370,8 @@ try {
     spinner.succeed(chalk.green("Operation completed successfully"));
   }
 
-  printPostActionsSummary(config.postActions, accion);
-  console.log();
-
-  // ── Post-actions ─────────────────────────────────────────────
-  await runPostActions(config.postActions, accion);
+  // Post-actions run AFTER commit/bump/push
+  await runPostActions(config.postActions ?? [], accion);
 
 } catch (err) {
   spinner.fail(chalk.red("Error during execution"));
