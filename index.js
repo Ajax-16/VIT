@@ -10,10 +10,11 @@ import chalk from "chalk";
 import ora from "ora";
 import { bump } from "./lib/bump.js";
 import { buildChangelog, editChangelog } from "./lib/changelog.js";
-import { loadVitConfig } from "./lib/config.js";
+import { loadVitConfig, shouldSimulate } from "./lib/config.js";
 import { getVcsAdapter, vcsLabel } from "./lib/vcs/index.js";
 import { printPostActionsSummary, runPostActions } from "./lib/post-actions.js";
 import { printPreActionsSummary, runPreActions } from "./lib/pre-actions.js";
+import { runSimulation } from "./lib/simulate.js";
 
 function writeErrorLog(err) {
   const logDir = join(tmpdir(), "vit-logs");
@@ -71,6 +72,10 @@ const lastTag = vcs.getLastTag();
 console.log(chalk.dim(`  VCS            : `) + chalk.cyan(vcsLabel(config.vcs?.provider)));
 console.log(chalk.dim(`  Current branch : `) + chalk.cyan(branch ?? "-"));
 if (lastTag) console.log(chalk.dim(`  Last tag       : `) + chalk.cyan(lastTag));
+if (config.simulate) {
+  const simTargets = config.simulate === true ? "all triggers" : config.simulate.join(", ");
+  console.log(chalk.dim(`  Simulate       : `) + chalk.yellow(simTargets));
+}
 console.log();
 
 const { accion } = await inquirer.prompt([
@@ -323,6 +328,12 @@ console.log(
 printPreActionsSummary(config, accion);
 printPostActionsSummary(config, accion);
 console.log();
+
+// ── Simulation (before confirmation) ────────────────────────────────────────
+
+if (shouldSimulate(config, accion)) {
+  await runSimulation(config, accion);
+}
 
 // ── Confirm & Execute ────────────────────────────────────────────────────────
 
