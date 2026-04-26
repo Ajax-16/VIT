@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.0.14] - 26/04/2026
+
+### 🚀 Features
+
+- New simulation system. Mark it to execute your pre actions and be sure of what you are going to do.
+
+
+### 🐛 Bug fixes
+
+- Fixed a merge error
+
+
+
 ## [0.0.13] - 26/04/2026
 
 ### 🚀 Features
