@@ -368,6 +368,7 @@ try {
       console.log(chalk.dim("  Note        : versions updated without commit/tag/push."));
     }
   } else {
+    // For "commit" action, just make a commit with the provided message (no version bump).
     vcs.addAll();
     vcs.commit(commitMessage);
     vcs.pushWithTags();
