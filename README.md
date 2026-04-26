@@ -46,6 +46,85 @@ Ejecuta `vit` en la raíz de tu proyecto. VIT buscará un archivo `vit-config.js
 
 ---
 
+## Argumentos CLI
+
+Puedes pasar argumentos directamente al ejecutar `vit` para saltarte pasos del flujo interactivo. Los prompts que ya tienen valor por argumento se omiten; el resto se siguen mostrando normalmente.
+
+```bash
+vit [comando] [opciones]
+```
+
+### Comandos
+
+| Comando | Descripción |
+|---|---|
+| `release` | Ejecuta el flujo de release |
+| `commit` | Ejecuta un commit sin bump |
+| `changelog` | Abre el flujo de changelog |
+| `rollback` | Revierte a un tag anterior |
+
+### Opciones
+
+| Opción | Alias | Descripción |
+|---|---|---|
+| `--bump <type>` | `-b` | Tipo de bump: `patch`, `minor` o `major` |
+| `--message <msg>` | `-m` | Mensaje del commit |
+| `--tag <tag>` | `-t` | Tag destino para rollback |
+| `--projects <ids>` | `-p` | IDs de proyectos separados por comas (monorepo) |
+| `--yes` | `-y` | Confirma todo automáticamente sin prompts (modo headless) |
+| `--dry-run` | `-d` | Simula la operación sin escribir ni hacer push |
+| `--version` | `-v` | Muestra la versión de VIT |
+| `--help` | `-h` | Muestra la ayuda |
+
+### Comportamiento por niveles
+
+Cada argumento saltará únicamente el prompt correspondiente; el resto del flujo interactivo continúa con normalidad.
+
+| Comando | Qué se salta | Qué sigue preguntando |
+|---|---|---|
+| `vit release` | Menú principal | Bump type, changelog, mensaje, confirmación |
+| `vit release --bump patch` | Menú + bump type | Changelog, mensaje, confirmación |
+| `vit release --bump patch --message "fix"` | Menú + bump + mensaje | Changelog, confirmación |
+| `vit release --bump patch --yes` | Todo (headless completo) | Nada |
+| `vit commit --yes` | Todo (usa mensaje por defecto) | Nada |
+| `vit rollback --tag v1.2.3` | Menú + selector de tag | Confirmación |
+| `vit rollback --tag v1.2.3 --yes` | Todo (headless completo) | Nada |
+
+> **Nota:** `--yes` solo activa el modo headless completo si se combina con un comando. Sin `--yes`, cada argumento saltará su prompt correspondiente pero el resto del flujo seguirá siendo interactivo.
+
+### Ejemplos
+
+```bash
+# Release interactivo desde el menú
+vit
+
+# Release saltando el menú, pregunta el resto
+vit release
+
+# Release con bump fijado, sigue preguntando changelog y confirmación
+vit release --bump minor
+
+# Release completamente automático (headless)
+vit release --bump patch --yes
+
+# Commit automático con mensaje por defecto
+vit commit --yes
+
+# Commit automático con mensaje personalizado
+vit commit --message "fix: typo" --yes
+
+# Rollback a un tag concreto sin confirmar
+vit rollback --tag v1.2.3 --yes
+
+# Simular un release sin escribir nada
+vit release --bump patch --dry-run
+
+# Release en monorepo solo para el backend
+vit release --bump patch --projects backend --yes
+```
+
+---
+
 ## Configuración — `vit-config.json`
 
 Crea un archivo `vit-config.json` en la raíz de tu proyecto:
