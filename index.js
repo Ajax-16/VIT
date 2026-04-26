@@ -320,8 +320,8 @@ console.log(
   }`,
 );
 
-printPreActionsSummary(config.preActions ?? [], accion);
-printPostActionsSummary(config.postActions ?? [], accion);
+printPreActionsSummary(config, accion);
+printPostActionsSummary(config, accion);
 console.log();
 
 // ── Confirm & Execute ────────────────────────────────────────────────────────
@@ -379,7 +379,7 @@ if (accion === "changelog") {
 // ── Run ──────────────────────────────────────────────────────────────────────
 
 try {
-  await runPreActions(config.preActions ?? [], accion);
+  await runPreActions(config, accion);
 } catch (err) {
   printError(err);
   process.exit(1);
@@ -418,7 +418,7 @@ try {
     spinner.succeed(chalk.green("Operation completed successfully"));
   }
 
-  await runPostActions(config.postActions ?? [], accion);
+  await runPostActions(config, accion);
 
 } catch (err) {
   spinner.fail(chalk.red("Error during execution"));
