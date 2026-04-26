@@ -73,8 +73,8 @@ console.log(
   chalk.hex("#046c04").bold("Version It!") +
   "  " +
   chalk.dim(`v${version}`) +
-  (dryRun       ? "  " + chalk.bgYellow.black.bold(" DRY-RUN ")   : "") +
-  (cli.headless ? "  " + chalk.bgCyan.black.bold(" HEADLESS ")   : "") +
+  (dryRun       ? "  " + chalk.bgYellow.black.bold(" DRY-RUN ")  : "") +
+  (cli.headless ? "  " + chalk.bgCyan.black.bold(" HEADLESS ")  : "") +
   "\n",
 );
 
@@ -88,14 +88,20 @@ if (dryRun)       console.log(chalk.dim(`  Mode           : `) + chalk.yellow.bo
 if (cli.headless) console.log(chalk.dim(`  Mode           : `) + chalk.cyan.bold("headless — running without prompts"));
 console.log();
 
-// ── Resolve action ──────────────────────────────────────────────────────────
+// ── Resolve action ────────────────────────────────────────────────────────
+// Priority:
+//   1. headless (command + --yes)  → use cli.command directly, no prompt
+//   2. cli.command provided        → skip the main menu, go straight to that command
+//   3. nothing                     → show the interactive menu
 let accion;
 
 if (cli.headless) {
-  // Non-interactive path: command comes entirely from CLI args
   accion = cli.command;
+} else if (cli.command) {
+  // Command given via args but not fully headless — skip menu, still ask remaining prompts
+  accion = cli.command;
+  console.log(chalk.dim(`  Command pre-selected: ${chalk.cyan(accion)}\n`));
 } else {
-  // Interactive path: prompt unless command was pre-selected
   const choices = [
     { name: "\uD83D\uDE80  Version it!  — bump + changelog + commit", value: "release" },
     { name: "\uD83D\uDCCB  Changelog    — add or edit entries",       value: "changelog" },
@@ -110,7 +116,6 @@ if (cli.headless) {
       name: "accion",
       message: "Welcome. What do you want to do?",
       choices,
-      default: cli.command ?? undefined,
     },
   ]);
   accion = answer.accion;
@@ -178,9 +183,10 @@ if (accion === "rollback") {
 
   let selectedTag;
 
-  if (cli.headless) {
+  if (cli.tag) {
+    // Tag provided via --tag (headless or semi-interactive)
     selectedTag = cli.tag;
-    if (!selectedTag || !tags.includes(selectedTag)) {
+    if (!tags.includes(selectedTag)) {
       console.log(chalk.red(`\n  ✖ Tag "${cli.tag}" not found. Available: ${tags.join(", ")}\n`));
       process.exit(1);
     }
@@ -190,7 +196,9 @@ if (accion === "rollback") {
       { type: "list", name: "selectedTag", message: "Select the tag to rollback to:", choices: tags.map((t) => ({ name: t, value: t })), pageSize: 15 },
     ]);
     selectedTag = answer.selectedTag;
+  }
 
+  if (!cli.yes) {
     const { confirmRollback } = await inquirer.prompt([
       { type: "confirm", name: "confirmRollback", message: chalk.yellow(`Confirm rollback to ${selectedTag}? This will modify the history.`), default: false },
     ]);
@@ -224,7 +232,7 @@ if (accion === "rollback") {
     tagsAfter.forEach((t) => console.log(chalk.dim(`    · ${t}`)));
     console.log();
 
-    let deleteTags = cli.yes; // headless --yes = auto-delete
+    let deleteTags = cli.yes;
     if (!cli.yes) {
       const ans = await inquirer.prompt([
         { type: "confirm", name: "deleteTags", message: chalk.yellow(`Delete these ${tagsAfter.length} tag(s)?`), default: false },
@@ -264,7 +272,6 @@ if (accion === "release") {
   let targets;
 
   if (cli.headless) {
-    // --projects flag or all projects
     const ids = cli.projects ?? configuredProjects.map((p) => p.id);
     const invalid = ids.filter((id) => !configuredProjects.find((p) => p.id === id));
     if (invalid.length > 0) {
@@ -287,14 +294,16 @@ if (accion === "release") {
     targets = t.includes("__all__") ? configuredProjects.map((p) => p.id) : t;
   }
 
+  // Bump type: use --bump if provided (with or without --yes), else prompt
   let bumpType;
-  if (cli.headless || cli.bump) {
+  if (cli.bump) {
     const valid = ["patch", "minor", "major"];
     if (!valid.includes(cli.bump)) {
       console.log(chalk.red(`\n  ✖ Invalid bump type "${cli.bump}". Use: patch | minor | major\n`));
       process.exit(1);
     }
     bumpType = cli.bump;
+    if (!cli.headless) console.log(chalk.dim(`  Bump pre-selected: ${chalk.cyan(bumpType)}\n`));
   } else {
     const ans = await inquirer.prompt([
       {
@@ -311,10 +320,10 @@ if (accion === "release") {
   }
 
   bumpResult = { targets, bumpType };
-  if (!cli.headless) console.log(chalk.green(`\n  ✔ Bump configured: ${bumpType} → ${targets.join(", ")}\n`));
+  if (!cli.headless && !cli.bump) console.log(chalk.green(`\n  ✔ Bump configured: ${bumpType} → ${targets.join(", ")}\n`));
 }
 
-// Changelog step — skipped entirely in headless mode
+// Changelog step — skipped in headless mode
 if (!cli.headless && (accion === "release" || accion === "changelog")) {
   while (true) {
     const { action } = await inquirer.prompt([
@@ -335,18 +344,20 @@ if (!cli.headless && (accion === "release" || accion === "changelog")) {
   }
 }
 
-// Commit message
+// Commit message: use --message if provided, else prompt
 if (accion !== "changelog") {
+  const defaultMsg = accion === "release" ? config.git.releaseCommitMessage : config.git.defaultCommitMessage;
   if (cli.headless) {
-    const defaultMsg = accion === "release" ? config.git.releaseCommitMessage : config.git.defaultCommitMessage;
     commitMessage = cli.message ?? defaultMsg;
+  } else if (cli.message) {
+    commitMessage = cli.message;
+    console.log(chalk.dim(`  Message pre-selected: ${chalk.cyan(commitMessage)}\n`));
   } else {
-    const defaultMsg = accion === "release" ? config.git.releaseCommitMessage : config.git.defaultCommitMessage;
     const { message } = await inquirer.prompt([
       {
         type: "input", name: "message",
         message: vcs.supportsCommit() ? "Commit message:" : "Descriptive message for the operation:",
-        default: cli.message ?? defaultMsg,
+        default: defaultMsg,
         validate: (v) => v.trim().length > 0 || "The message cannot be empty",
       },
     ]);
@@ -401,11 +412,10 @@ if (accion === "changelog") {
   }
 
   if (!commitMessage) {
-    if (cli.yes) {
-      commitMessage = cli.message ?? config.git.changelogCommitMessage;
-    } else {
+    commitMessage = cli.message ?? config.git.changelogCommitMessage;
+    if (!cli.yes) {
       const { message } = await inquirer.prompt([
-        { type: "input", name: "message", message: "Commit message:", default: cli.message ?? config.git.changelogCommitMessage, validate: (v) => v.trim().length > 0 || "Cannot be empty" },
+        { type: "input", name: "message", message: "Commit message:", default: commitMessage, validate: (v) => v.trim().length > 0 || "Cannot be empty" },
       ]);
       commitMessage = message;
     }
