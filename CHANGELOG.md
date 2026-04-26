@@ -1,20 +1,16 @@
 # Changelog
 
-## [0.0.8] - 26/04/2026
+## [0.0.9] - 26/04/2026
 
 ### 🚀 Features
 
 - Added new error control with reduced data on screen and a tmp log that generates with all the stack trace.
-
-
 
 ## [0.0.7] - 26/04/2026
 
 ### 🚀 Features
 
 - Added version display on entry
-
-
 
 # Changelog
 
@@ -23,8 +19,6 @@
 ### 🚀 Features
 
 - preActions and postActions and pipelines added
-
-
 
 # Registro de cambios
 
