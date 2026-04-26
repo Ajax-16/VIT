@@ -14,10 +14,17 @@ import { loadVitConfig, checkReleaseBranch } from "./lib/config.js";
 import { getVcsAdapter, vcsLabel } from "./lib/vcs/index.js";
 import { printPostActionsSummary, runPostActions } from "./lib/post-actions.js";
 import { printPreActionsSummary, runPreActions } from "./lib/pre-actions.js";
+import { parseArgs, printHelp, printVersion } from "./lib/cli.js";
 
-// ── dry-run flag ────────────────────────────────────────────────────────────────
-const dryRun = process.argv.includes("--dry-run");
+// ── Parse CLI args ────────────────────────────────────────────────────────
+const cli = parseArgs();
 
+if (cli.help)    { printHelp();    process.exit(0); }
+if (cli.version) { printVersion(); process.exit(0); }
+
+const dryRun = cli.dryRun;
+
+// ── Error log helper ──────────────────────────────────────────────────────
 function writeErrorLog(err) {
   const logDir = join(tmpdir(), "vit-logs");
   mkdirSync(logDir, { recursive: true });
@@ -55,6 +62,7 @@ function printError(err) {
   );
 }
 
+// ── Boot banner ────────────────────────────────────────────────────────────
 const config = loadVitConfig();
 const vcs = getVcsAdapter(config.vcs?.provider ?? "git");
 
@@ -65,7 +73,8 @@ console.log(
   chalk.hex("#046c04").bold("Version It!") +
   "  " +
   chalk.dim(`v${version}`) +
-  (dryRun ? "  " + chalk.bgYellow.black.bold(" DRY-RUN ") : "") +
+  (dryRun       ? "  " + chalk.bgYellow.black.bold(" DRY-RUN ")  : "") +
+  (cli.headless ? "  " + chalk.bgCyan.black.bold(" HEADLESS ")  : "") +
   "\n",
 );
 
@@ -74,24 +83,42 @@ const lastTag = vcs.getLastTag();
 
 console.log(chalk.dim(`  VCS            : `) + chalk.cyan(vcsLabel(config.vcs?.provider)));
 console.log(chalk.dim(`  Current branch : `) + chalk.cyan(branch ?? "-"));
-if (lastTag) console.log(chalk.dim(`  Last tag       : `) + chalk.cyan(lastTag));
-if (dryRun) console.log(chalk.dim(`  Mode           : `) + chalk.yellow.bold("dry-run — no files, commits, tags or pushes will be made"));
+if (lastTag)      console.log(chalk.dim(`  Last tag       : `) + chalk.cyan(lastTag));
+if (dryRun)       console.log(chalk.dim(`  Mode           : `) + chalk.yellow.bold("dry-run — no files, commits, tags or pushes will be made"));
+if (cli.headless) console.log(chalk.dim(`  Mode           : `) + chalk.cyan.bold("headless — running without prompts"));
 console.log();
 
-const { accion } = await inquirer.prompt([
-  {
-    type: "list",
-    name: "accion",
-    message: "Welcome. What do you want to do?",
-    choices: [
-      { name: "\uD83D\uDE80  Version it!  — bump + changelog + commit", value: "release" },
-      { name: "\uD83D\uDCCB  Changelog    — add or edit entries", value: "changelog" },
-      { name: "\uD83D\uDCBE  Commit       — commit and push without bump", value: "commit" },
-      { name: "\u23EA  Rollback     — roll back to a tag", value: "rollback" },
-      { name: "\u274C  Exit", value: "exit" },
-    ],
-  },
-]);
+// ── Resolve action ────────────────────────────────────────────────────────
+// Priority:
+//   1. headless (command + --yes)  → use cli.command directly, no prompt
+//   2. cli.command provided        → skip the main menu, go straight to that command
+//   3. nothing                     → show the interactive menu
+let accion;
+
+if (cli.headless) {
+  accion = cli.command;
+} else if (cli.command) {
+  accion = cli.command;
+  console.log(chalk.dim(`  Command pre-selected: ${chalk.cyan(accion)}\n`));
+} else {
+  const choices = [
+    { name: "\uD83D\uDE80  Version it!  — bump + changelog + commit", value: "release" },
+    { name: "\uD83D\uDCCB  Changelog    — add or edit entries",       value: "changelog" },
+    { name: "\uD83D\uDCBE  Commit       — commit and push without bump", value: "commit" },
+    { name: "\u23EA  Rollback     — roll back to a tag",            value: "rollback" },
+    { name: "\u274C  Exit",                                          value: "exit" },
+  ];
+
+  const answer = await inquirer.prompt([
+    {
+      type: "list",
+      name: "accion",
+      message: "Welcome. What do you want to do?",
+      choices,
+    },
+  ]);
+  accion = answer.accion;
+}
 
 if (accion === "exit") {
   console.log(chalk.dim("\n  Bye.\n"));
@@ -99,16 +126,11 @@ if (accion === "exit") {
 }
 
 if ((accion === "commit" || accion === "rollback") && !vcs.supportsVersioning()) {
-  console.log(
-    chalk.yellow(
-      `\n  \u26A0 The current VCS (${vcsLabel(config.vcs?.provider)}) does not support this operation.\n`,
-    ),
-  );
+  console.log(chalk.yellow(`\n  \u26A0 The current VCS (${vcsLabel(config.vcs?.provider)}) does not support this operation.\n`));
   process.exit(0);
 }
 
 // ── Branch guard (release only) ────────────────────────────────────────
-
 if (accion === "release" && branch) {
   const { allowed } = checkReleaseBranch(config.git.releaseBranches, branch);
 
@@ -118,50 +140,38 @@ if (accion === "release" && branch) {
     if (config.git.strict && !dryRun) {
       console.log(
         "\n" +
-        chalk.bgRed.white.bold("  BLOCKED  ") +
-        "  " +
+        chalk.bgRed.white.bold("  BLOCKED  ") + "  " +
         chalk.red.bold(`Releases are not allowed from branch "${branch}".`) +
-        "\n" +
-        chalk.dim(`  Allowed branches: ${allowed_list}`) +
-        "\n"
+        "\n" + chalk.dim(`  Allowed branches: ${allowed_list}`) + "\n"
       );
       process.exit(1);
     } else {
       const isDryRunBypass = dryRun && config.git.strict;
       console.log(
         "\n" +
-        chalk.bgYellow.black.bold("  WARNING  ") +
-        "  " +
+        chalk.bgYellow.black.bold("  WARNING  ") + "  " +
         chalk.yellow.bold(`You are on branch "${branch}", not on a release branch.`) +
         (isDryRunBypass ? chalk.dim(" (strict bypassed in dry-run)") : "") +
-        "\n" +
-        chalk.dim(`  Configured release branches: ${allowed_list}`) +
-        "\n"
+        "\n" + chalk.dim(`  Configured release branches: ${allowed_list}`) + "\n"
       );
 
-      if (!dryRun) {
+      if (!dryRun && !cli.yes) {
         const { continueAnyway } = await inquirer.prompt([
-          {
-            type: "confirm",
-            name: "continueAnyway",
-            message: chalk.yellow("Continue anyway?"),
-            default: false,
-          },
+          { type: "confirm", name: "continueAnyway", message: chalk.yellow("Continue anyway?"), default: false },
         ]);
-
         if (!continueAnyway) {
           console.log(chalk.yellow("\n  Release cancelled.\n"));
           process.exit(0);
         }
+      } else if (cli.yes && !dryRun) {
+        console.log(chalk.dim("  --yes flag detected, continuing despite branch warning.\n"));
       }
-
       console.log();
     }
   }
 }
 
 // ── Rollback ────────────────────────────────────────────────────────────────
-
 if (accion === "rollback") {
   const tags = vcs.getAllTags();
 
@@ -170,28 +180,30 @@ if (accion === "rollback") {
     process.exit(0);
   }
 
-  const { selectedTag } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "selectedTag",
-      message: "Select the tag to rollback to:",
-      choices: tags.map((t) => ({ name: t, value: t })),
-      pageSize: 15,
-    },
-  ]);
+  let selectedTag;
 
-  const { confirmRollback } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "confirmRollback",
-      message: chalk.yellow(`Confirm rollback to ${selectedTag}? This will modify the history.`),
-      default: false,
-    },
-  ]);
+  if (cli.tag) {
+    selectedTag = cli.tag;
+    if (!tags.includes(selectedTag)) {
+      console.log(chalk.red(`\n  ✖ Tag "${cli.tag}" not found. Available: ${tags.join(", ")}\n`));
+      process.exit(1);
+    }
+    console.log(chalk.dim(`  Tag: ${selectedTag}`));
+  } else {
+    const answer = await inquirer.prompt([
+      { type: "list", name: "selectedTag", message: "Select the tag to rollback to:", choices: tags.map((t) => ({ name: t, value: t })), pageSize: 15 },
+    ]);
+    selectedTag = answer.selectedTag;
+  }
 
-  if (!confirmRollback) {
-    console.log(chalk.yellow("\n  Rollback cancelled.\n"));
-    process.exit(0);
+  if (!cli.yes) {
+    const { confirmRollback } = await inquirer.prompt([
+      { type: "confirm", name: "confirmRollback", message: chalk.yellow(`Confirm rollback to ${selectedTag}? This will modify the history.`), default: false },
+    ]);
+    if (!confirmRollback) {
+      console.log(chalk.yellow("\n  Rollback cancelled.\n"));
+      process.exit(0);
+    }
   }
 
   if (dryRun) {
@@ -200,17 +212,12 @@ if (accion === "rollback") {
   }
 
   const spinner = ora({ text: "Executing rollback...", color: "yellow" }).start();
-
   try {
     vcs.rollbackToTag(selectedTag);
     spinner.succeed(chalk.green(`Rollback to ${selectedTag} completed.`));
     console.log(chalk.dim("\n  The files have been reverted to the state of the tag."));
-
-    if (vcs.supportsPush()) {
-      console.log(chalk.dim("  Use a force push if you need to upload the rollback to the remote.\n"));
-    } else {
-      console.log();
-    }
+    if (vcs.supportsPush()) console.log(chalk.dim("  Use a force push if you need to upload the rollback to the remote.\n"));
+    else console.log();
   } catch (err) {
     spinner.fail(chalk.red("Error during rollback"));
     printError(err);
@@ -218,20 +225,18 @@ if (accion === "rollback") {
   }
 
   const tagsAfter = vcs.getTagsAfter(selectedTag);
-
   if (tagsAfter.length > 0) {
     console.log(chalk.dim(`\n  Tags after ${selectedTag}:`));
     tagsAfter.forEach((t) => console.log(chalk.dim(`    · ${t}`)));
     console.log();
 
-    const { deleteTags } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "deleteTags",
-        message: chalk.yellow(`Delete these ${tagsAfter.length} tag(s)?`),
-        default: false,
-      },
-    ]);
+    let deleteTags = cli.yes;
+    if (!cli.yes) {
+      const ans = await inquirer.prompt([
+        { type: "confirm", name: "deleteTags", message: chalk.yellow(`Delete these ${tagsAfter.length} tag(s)?`), default: false },
+      ]);
+      deleteTags = ans.deleteTags;
+    }
 
     if (deleteTags) {
       const spinnerTags = ora({ text: "Deleting tags...", color: "yellow" }).start();
@@ -251,75 +256,76 @@ if (accion === "rollback") {
 }
 
 // ── Release / Commit / Changelog ────────────────────────────────────────────
-
-let bumpResult = null;
+let bumpResult    = null;
 let changelogAction = "none";
-let commitMessage = null;
+let commitMessage  = null;
 
 if (accion === "release") {
   const configuredProjects = config.projects ?? [];
-
   if (configuredProjects.length === 0) {
-    console.log(chalk.red("\n  \u2716 No projects configured in vit-config.json.\n"));
+    console.log(chalk.red("\n  ✖ No projects configured in vit-config.json.\n"));
     process.exit(1);
   }
 
   let targets;
 
-  if (configuredProjects.length === 1) {
+  if (cli.headless) {
+    const ids = cli.projects ?? configuredProjects.map((p) => p.id);
+    const invalid = ids.filter((id) => !configuredProjects.find((p) => p.id === id));
+    if (invalid.length > 0) {
+      console.log(chalk.red(`\n  ✖ Unknown project(s): ${invalid.join(", ")}\n`));
+      process.exit(1);
+    }
+    targets = ids;
+    console.log(chalk.green(`\n  ✔ Projects : ${targets.join(", ")}\n  ✔ Bump     : ${cli.bump}\n`));
+  } else if (configuredProjects.length === 1) {
     targets = [configuredProjects[0].id];
-    console.log(
-      chalk.green(`\n  \u2714 Project selected automatically: ${configuredProjects[0].label} (${configuredProjects[0].id})\n`),
-    );
+    console.log(chalk.green(`\n  ✔ Project selected automatically: ${configuredProjects[0].label} (${configuredProjects[0].id})\n`));
   } else {
     const projectChoices = [
       { name: "all — All configured projects", value: "__all__" },
-      ...configuredProjects.map((project) => ({
-        name: `${project.id} — ${project.label} (${project.path})`,
-        value: project.id,
-      })),
+      ...configuredProjects.map((p) => ({ name: `${p.id} — ${p.label} (${p.path})`, value: p.id })),
     ];
-
-    const bumpAnswers = await inquirer.prompt([
-      {
-        type: "checkbox",
-        name: "targets",
-        message: "Which projects to bump?",
-        choices: projectChoices,
-        validate: (value) => value.length > 0 || "You must select at least one project",
-      },
+    const { targets: t } = await inquirer.prompt([
+      { type: "checkbox", name: "targets", message: "Which projects to bump?", choices: projectChoices, validate: (v) => v.length > 0 || "Select at least one" },
     ]);
-
-    targets = bumpAnswers.targets.includes("__all__")
-      ? configuredProjects.map((p) => p.id)
-      : bumpAnswers.targets;
+    targets = t.includes("__all__") ? configuredProjects.map((p) => p.id) : t;
   }
 
-  const { bumpType } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "bumpType",
-      message: "What type of bump?",
-      choices: [
-        { name: "patch — Minor correction    (x.x.+1)", value: "patch" },
-        { name: "minor — New functionality  (x.+1.0)", value: "minor" },
-        { name: "major — Major change        (+1.0.0)", value: "major" },
-      ],
-      default: "patch",
-    },
-  ]);
+  let bumpType;
+  if (cli.bump) {
+    const valid = ["patch", "minor", "major"];
+    if (!valid.includes(cli.bump)) {
+      console.log(chalk.red(`\n  ✖ Invalid bump type "${cli.bump}". Use: patch | minor | major\n`));
+      process.exit(1);
+    }
+    bumpType = cli.bump;
+    if (!cli.headless) console.log(chalk.dim(`  Bump pre-selected: ${chalk.cyan(bumpType)}\n`));
+  } else {
+    const ans = await inquirer.prompt([
+      {
+        type: "list", name: "bumpType", message: "What type of bump?",
+        choices: [
+          { name: "patch — Minor correction    (x.x.+1)", value: "patch" },
+          { name: "minor — New functionality  (x.+1.0)", value: "minor" },
+          { name: "major — Major change        (+1.0.0)", value: "major" },
+        ],
+        default: "patch",
+      },
+    ]);
+    bumpType = ans.bumpType;
+  }
 
   bumpResult = { targets, bumpType };
-  console.log(chalk.green(`\n  \u2714 Bump configured: ${bumpType} \u2192 ${targets.join(", ")}\n`));
+  if (!cli.headless && !cli.bump) console.log(chalk.green(`\n  ✔ Bump configured: ${bumpType} → ${targets.join(", ")}\n`));
 }
 
-if (accion === "release" || accion === "changelog") {
+// Changelog step — skipped in headless mode
+if (!cli.headless && (accion === "release" || accion === "changelog")) {
   while (true) {
     const { action } = await inquirer.prompt([
       {
-        type: "list",
-        name: "action",
-        message: "What to do with the changelog?",
+        type: "list", name: "action", message: "What to do with the changelog?",
         choices: [
           { name: "Do nothing", value: "none" },
           { name: "Add new entry", value: "add" },
@@ -328,54 +334,56 @@ if (accion === "release" || accion === "changelog") {
         default: "none",
       },
     ]);
-
     if (action === "none") break;
-    if (action === "add") await buildChangelog(config);
+    if (action === "add")  await buildChangelog(config);
     if (action === "edit") await editChangelog(config);
     changelogAction = action;
   }
 }
 
+// Commit message
+// - headless o --yes sin --message → usar default sin preguntar
+// - --message explícito            → usar directamente
+// - ninguno de los anteriores      → prompt
 if (accion !== "changelog") {
-  const defaultMessage =
-    accion === "release"
-      ? config.git.releaseCommitMessage
-      : config.git.defaultCommitMessage;
-
-  const { message } = await inquirer.prompt([
-    {
-      type: "input",
-      name: "message",
-      message: vcs.supportsCommit()
-        ? "Commit message:"
-        : "Descriptive message for the operation:",
-      default: defaultMessage,
-      validate: (v) => v.trim().length > 0 || "The message cannot be empty",
-    },
-  ]);
-  commitMessage = message;
+  const defaultMsg = accion === "release" ? config.git.releaseCommitMessage : config.git.defaultCommitMessage;
+  if (cli.headless || cli.yes) {
+    // --yes solo o headless: usar el mensaje provisto o el default, sin prompt
+    commitMessage = cli.message ?? defaultMsg;
+    if (!cli.headless) console.log(chalk.dim(`  Message: ${chalk.cyan(commitMessage)}\n`));
+  } else if (cli.message) {
+    commitMessage = cli.message;
+    console.log(chalk.dim(`  Message pre-selected: ${chalk.cyan(commitMessage)}\n`));
+  } else {
+    const { message } = await inquirer.prompt([
+      {
+        type: "input", name: "message",
+        message: vcs.supportsCommit() ? "Commit message:" : "Descriptive message for the operation:",
+        default: defaultMsg,
+        validate: (v) => v.trim().length > 0 || "The message cannot be empty",
+      },
+    ]);
+    commitMessage = message;
+  }
 }
 
 // ── Summary ─────────────────────────────────────────────────────────────────
-
 console.log("\n" + chalk.bold("  Operation summary:"));
 console.log(chalk.dim("  ─────────────────────────"));
 console.log(`  Action    : ${chalk.cyan(accion)}`);
 console.log(`  VCS       : ${chalk.cyan(vcsLabel(config.vcs?.provider))}`);
-if (dryRun) console.log(`  Mode      : ${chalk.yellow.bold("dry-run")}`);
+if (dryRun)       console.log(`  Mode      : ${chalk.yellow.bold("dry-run")}`);
+if (cli.headless) console.log(`  Mode      : ${chalk.cyan.bold("headless")}`);
 if (bumpResult) {
   console.log(`  Targets   : ${chalk.cyan(bumpResult.targets.join(", "))}`);
   console.log(`  Bump      : ${chalk.cyan(bumpResult.bumpType)}`);
 }
-if (commitMessage) {
-  console.log(`  Message   : ${chalk.cyan(commitMessage)}`);
-}
+if (commitMessage) console.log(`  Message   : ${chalk.cyan(commitMessage)}`);
 console.log(
-  `  Changelog : ${changelogAction === "add"
-    ? chalk.green("new entry")
-    : changelogAction === "edit"
-      ? chalk.yellow("edit existing")
-      : chalk.dim("no")
+  `  Changelog : ${
+    changelogAction === "add"  ? chalk.green("new entry") :
+    changelogAction === "edit" ? chalk.yellow("edit existing") :
+    chalk.dim("no")
   }`,
 );
 
@@ -384,14 +392,9 @@ printPostActionsSummary(config, accion);
 console.log();
 
 // ── Confirm & Execute ────────────────────────────────────────────────────────
-
 if (accion === "changelog") {
-  const canCommit = vcs.supportsCommit();
-
-  if (!canCommit) {
-    console.log(
-      chalk.yellow("\n  \u26A0 The current VCS provider does not support commit/push. The changelog will be saved locally.\n"),
-    );
+  if (!vcs.supportsCommit()) {
+    console.log(chalk.yellow("\n  \u26A0 VCS does not support commit/push. Changelog saved locally.\n"));
     process.exit(0);
   }
 
@@ -400,48 +403,40 @@ if (accion === "changelog") {
     process.exit(0);
   }
 
-  const { doCommit } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "doCommit",
-      message: "Make commit and push of the changelog?",
-      default: true,
-    },
-  ]);
-
-  if (!doCommit) {
-    console.log(chalk.yellow("\n  Changelog saved locally. No commit.\n"));
-    process.exit(0);
+  if (!cli.yes) {
+    const { doCommit } = await inquirer.prompt([
+      { type: "confirm", name: "doCommit", message: "Make commit and push of the changelog?", default: true },
+    ]);
+    if (!doCommit) {
+      console.log(chalk.yellow("\n  Changelog saved locally. No commit.\n"));
+      process.exit(0);
+    }
   }
 
-  const { message } = await inquirer.prompt([
-    {
-      type: "input",
-      name: "message",
-      message: "Commit message:",
-      default: config.git.changelogCommitMessage,
-      validate: (v) => v.trim().length > 0 || "The message cannot be empty",
-    },
-  ]);
-  commitMessage = message;
+  if (!commitMessage) {
+    commitMessage = cli.message ?? config.git.changelogCommitMessage;
+    if (!cli.yes) {
+      const { message } = await inquirer.prompt([
+        { type: "input", name: "message", message: "Commit message:", default: commitMessage, validate: (v) => v.trim().length > 0 || "Cannot be empty" },
+      ]);
+      commitMessage = message;
+    }
+  }
 } else {
-  const { proceed } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "proceed",
-      message: dryRun ? "Run dry-run? (nothing will be written or pushed)" : "Confirm and execute?",
-      default: true,
-    },
-  ]);
-
-  if (!proceed) {
-    console.log(chalk.yellow("\n  Operation cancelled.\n"));
-    process.exit(0);
+  if (!cli.yes) {
+    const { proceed } = await inquirer.prompt([
+      { type: "confirm", name: "proceed", message: dryRun ? "Run dry-run? (nothing will be written or pushed)" : "Confirm and execute?", default: true },
+    ]);
+    if (!proceed) {
+      console.log(chalk.yellow("\n  Operation cancelled.\n"));
+      process.exit(0);
+    }
+  } else {
+    console.log(chalk.dim("  Auto-confirmed via --yes.\n"));
   }
 }
 
 // ── Run ──────────────────────────────────────────────────────────────────────
-
 try {
   await runPreActions(config, accion);
 } catch (err) {
@@ -449,9 +444,7 @@ try {
   process.exit(1);
 }
 
-if (dryRun) {
-  console.log("\n" + chalk.bgYellow.black.bold("  DRY-RUN RESULTS  ") + "\n");
-}
+if (dryRun) console.log("\n" + chalk.bgYellow.black.bold("  DRY-RUN RESULTS  ") + "\n");
 
 const spinner = ora({ text: dryRun ? "Simulating..." : "Executing...", color: "yellow" }).start();
 
@@ -466,20 +459,16 @@ try {
       dryRun,
     });
 
-    spinner.succeed(dryRun
-      ? chalk.yellow("Dry-run completed — no changes made.")
-      : chalk.green("Bump completed successfully!")
-    );
+    spinner.succeed(dryRun ? chalk.yellow("Dry-run completed — no changes made.") : chalk.green("Bump completed successfully!"));
     console.log();
 
     for (const item of result.bumpedProjects) {
-      const label = dryRun ? chalk.dim("  [dry-run] ") : "  ";
-      console.log(`${label}${item.label.padEnd(12)}: ${chalk.cyan("v" + item.version)}`);
+      const prefix = dryRun ? chalk.dim("  [dry-run] ") : "  ";
+      console.log(`${prefix}${item.label.padEnd(12)}: ${chalk.cyan("v" + item.version)}`);
     }
-
     if (result.tag) {
-      const label = dryRun ? chalk.dim("  [dry-run] Tag  ") : "  Tag         ";
-      console.log(`${label}: ${chalk.cyan(result.tag)}`);
+      const prefix = dryRun ? chalk.dim("  [dry-run] Tag  ") : "  Tag         ";
+      console.log(`${prefix}: ${chalk.cyan(result.tag)}`);
     }
 
   } else if (!dryRun) {
