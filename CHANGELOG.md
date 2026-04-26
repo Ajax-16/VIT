@@ -1,3 +1,13 @@
+# Registro de cambios
+
+## [0.0.4] - 26/04/2026
+
+### 🚀 Features
+
+- New postActions feature! Run any script or apps in specific vit actions
+
+
+
 # Changelog
 
 ## [0.0.3] - 26/04/2026

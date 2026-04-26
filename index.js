@@ -5,10 +5,8 @@ import ora from "ora";
 import { bump } from "./lib/bump.js";
 import { buildChangelog, editChangelog } from "./lib/changelog.js";
 import { loadVitConfig } from "./lib/config.js";
-import {
-  getVcsAdapter,
-  vcsLabel,
-} from "./lib/vcs/index.js";
+import { getVcsAdapter, vcsLabel } from "./lib/vcs/index.js";
+import { runPostActions } from "./lib/post-actions.js";
 
 const config = loadVitConfig();
 const vcs = getVcsAdapter(config.vcs?.provider ?? "git");
@@ -24,9 +22,9 @@ console.log(
 const branch = vcs.getCurrentBranch();
 const lastTag = vcs.getLastTag();
 
-console.log(chalk.dim(`  VCS         : `) + chalk.cyan(vcsLabel(config.vcs?.provider)));
+console.log(chalk.dim(`  VCS            : `) + chalk.cyan(vcsLabel(config.vcs?.provider)));
 console.log(chalk.dim(`  Current branch : `) + chalk.cyan(branch ?? "-"));
-if (lastTag) console.log(chalk.dim(`  Last tag  : `) + chalk.cyan(lastTag));
+if (lastTag) console.log(chalk.dim(`  Last tag       : `) + chalk.cyan(lastTag));
 console.log();
 
 const { accion } = await inquirer.prompt([
@@ -35,14 +33,8 @@ const { accion } = await inquirer.prompt([
     name: "accion",
     message: "Welcome. What do you want to do?",
     choices: [
-      {
-        name: "🚀  Version it!  — bump + changelog + commit",
-        value: "release",
-      },
-      {
-        name: "📋  Changelog    — add or edit entries",
-        value: "changelog",
-      },
+      { name: "🚀  Version it!  — bump + changelog + commit", value: "release" },
+      { name: "📋  Changelog    — add or edit entries", value: "changelog" },
       { name: "💾  Commit       — commit and push without bump", value: "commit" },
       { name: "⏪  Rollback     — roll back to a tag", value: "rollback" },
       { name: "❌  Exit", value: "exit" },
@@ -63,6 +55,8 @@ if ((accion === "commit" || accion === "rollback") && !vcs.supportsVersioning())
   );
   process.exit(0);
 }
+
+// ── Rollback ────────────────────────────────────────────────────────────────
 
 if (accion === "rollback") {
   const tags = vcs.getAllTags();
@@ -86,9 +80,7 @@ if (accion === "rollback") {
     {
       type: "confirm",
       name: "confirmRollback",
-      message: chalk.yellow(
-        `Confirm rollback to ${selectedTag}? This will modify the history.`,
-      ),
+      message: chalk.yellow(`Confirm rollback to ${selectedTag}? This will modify the history.`),
       default: false,
     },
   ]);
@@ -98,10 +90,7 @@ if (accion === "rollback") {
     process.exit(0);
   }
 
-  const spinner = ora({
-    text: "Executing rollback...",
-    color: "yellow",
-  }).start();
+  const spinner = ora({ text: "Executing rollback...", color: "yellow" }).start();
 
   try {
     vcs.rollbackToTag(selectedTag);
@@ -109,11 +98,7 @@ if (accion === "rollback") {
     console.log(chalk.dim("\n  The files have been reverted to the state of the tag."));
 
     if (vcs.supportsPush()) {
-      console.log(
-        chalk.dim(
-          "  Use a force push if you need to upload the rollback to the remote.\n",
-        ),
-      );
+      console.log(chalk.dim("  Use a force push if you need to upload the rollback to the remote.\n"));
     } else {
       console.log();
     }
@@ -134,26 +119,19 @@ if (accion === "rollback") {
       {
         type: "confirm",
         name: "deleteTags",
-        message: chalk.yellow(
-          `Delete these ${tagsAfter.length} tag(s)?`
-        ),
+        message: chalk.yellow(`Delete these ${tagsAfter.length} tag(s)?`),
         default: false,
       },
     ]);
 
     if (deleteTags) {
-      const spinnerTags = ora({
-        text: "Deleting tags...",
-        color: "yellow",
-      }).start();
+      const spinnerTags = ora({ text: "Deleting tags...", color: "yellow" }).start();
 
       try {
         for (const t of tagsAfter) {
           vcs.deleteTag(t);
         }
-        spinnerTags.succeed(
-          chalk.green(`${tagsAfter.length} tag(s) deleted.`),
-        );
+        spinnerTags.succeed(chalk.green(`${tagsAfter.length} tag(s) deleted.`));
       } catch (err) {
         spinnerTags.fail(chalk.red("Error deleting tags"));
         console.error("\n" + chalk.red(err.message) + "\n");
@@ -165,6 +143,8 @@ if (accion === "rollback") {
 
   process.exit(0);
 }
+
+// ── Release / Commit / Changelog ────────────────────────────────────────────
 
 let bumpResult = null;
 let changelogAction = "none";
@@ -183,9 +163,7 @@ if (accion === "release") {
   if (configuredProjects.length === 1) {
     targets = [configuredProjects[0].id];
     console.log(
-      chalk.green(
-        `\n  ✔ Project selected automatically: ${configuredProjects[0].label} (${configuredProjects[0].id})\n`,
-      ),
+      chalk.green(`\n  ✔ Project selected automatically: ${configuredProjects[0].label} (${configuredProjects[0].id})\n`),
     );
   } else {
     const projectChoices = [
@@ -202,8 +180,7 @@ if (accion === "release") {
         name: "targets",
         message: "Which projects to bump?",
         choices: projectChoices,
-        validate: (value) =>
-          value.length > 0 || "You must select at least one project",
+        validate: (value) => value.length > 0 || "You must select at least one project",
       },
     ]);
 
@@ -226,16 +203,9 @@ if (accion === "release") {
     },
   ]);
 
-  bumpResult = {
-    targets,
-    bumpType,
-  };
+  bumpResult = { targets, bumpType };
 
-  console.log(
-    chalk.green(
-      `\n  ✔ Bump configured: ${bumpType} → ${targets.join(", ")}\n`,
-    ),
-  );
+  console.log(chalk.green(`\n  ✔ Bump configured: ${bumpType} → ${targets.join(", ")}\n`));
 }
 
 if (accion === "release" || accion === "changelog") {
@@ -282,6 +252,8 @@ if (accion !== "changelog") {
   commitMessage = message;
 }
 
+// ── Summary ─────────────────────────────────────────────────────────────────
+
 console.log("\n" + chalk.bold("  Operation summary:"));
 console.log(chalk.dim("  ─────────────────────────"));
 console.log(`  Action    : ${chalk.cyan(accion)}`);
@@ -301,16 +273,28 @@ console.log(
       : chalk.dim("no")
   }`,
 );
+
+// Show configured post-actions for this trigger
+const applicablePostActions = (config.postActions ?? []).filter((a) => {
+  const on = Array.isArray(a.on) ? a.on : [a.on ?? "release"];
+  return on.includes(accion);
+});
+if (applicablePostActions.length > 0) {
+  console.log(`  Post-actions:`);
+  applicablePostActions.forEach((a) =>
+    console.log(`    · ${chalk.dim(a.label ?? a.command)}`)
+  );
+}
 console.log();
+
+// ── Confirm & Execute ────────────────────────────────────────────────────────
 
 if (accion === "changelog") {
   const canCommit = vcs.supportsCommit();
 
   if (!canCommit) {
     console.log(
-      chalk.yellow(
-        "\n  ⚠ The current VCS provider does not support commit/push. The changelog will be saved locally.\n",
-      ),
+      chalk.yellow("\n  ⚠ The current VCS provider does not support commit/push. The changelog will be saved locally.\n"),
     );
     process.exit(0);
   }
@@ -325,9 +309,7 @@ if (accion === "changelog") {
   ]);
 
   if (!doCommit) {
-    console.log(
-      chalk.yellow("\n  Changelog saved locally. No commit.\n"),
-    );
+    console.log(chalk.yellow("\n  Changelog saved locally. No commit.\n"));
     process.exit(0);
   }
 
@@ -357,6 +339,8 @@ if (accion === "changelog") {
   }
 }
 
+// ── Run ──────────────────────────────────────────────────────────────────────
+
 const spinner = ora({ text: "Executing...", color: "yellow" }).start();
 
 try {
@@ -381,9 +365,7 @@ try {
     }
 
     if (!vcs.supportsVersioning()) {
-      console.log(
-        chalk.dim("  Note        : versions updated without commit/tag/push."),
-      );
+      console.log(chalk.dim("  Note        : versions updated without commit/tag/push."));
     }
   } else {
     vcs.addAll();
@@ -392,7 +374,12 @@ try {
     spinner.succeed(chalk.green("Operation completed successfully"));
   }
 
+  printPostActionsSummary(config.postActions, accion);
   console.log();
+
+  // ── Post-actions ─────────────────────────────────────────────
+  await runPostActions(config.postActions, accion);
+
 } catch (err) {
   spinner.fail(chalk.red("Error during execution"));
   console.error("\n" + chalk.red(err.message));
