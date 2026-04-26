@@ -10,11 +10,13 @@ import chalk from "chalk";
 import ora from "ora";
 import { bump } from "./lib/bump.js";
 import { buildChangelog, editChangelog } from "./lib/changelog.js";
-import { loadVitConfig, shouldSimulate, checkReleaseBranch } from "./lib/config.js";
+import { loadVitConfig, checkReleaseBranch } from "./lib/config.js";
 import { getVcsAdapter, vcsLabel } from "./lib/vcs/index.js";
 import { printPostActionsSummary, runPostActions } from "./lib/post-actions.js";
 import { printPreActionsSummary, runPreActions } from "./lib/pre-actions.js";
-import { runSimulation } from "./lib/simulate.js";
+
+// ── dry-run flag ────────────────────────────────────────────────────────────────
+const dryRun = process.argv.includes("--dry-run");
 
 function writeErrorLog(err) {
   const logDir = join(tmpdir(), "vit-logs");
@@ -63,6 +65,7 @@ console.log(
   chalk.hex("#046c04").bold("Version It!") +
   "  " +
   chalk.dim(`v${version}`) +
+  (dryRun ? "  " + chalk.bgYellow.black.bold(" DRY-RUN ") : "") +
   "\n",
 );
 
@@ -72,10 +75,7 @@ const lastTag = vcs.getLastTag();
 console.log(chalk.dim(`  VCS            : `) + chalk.cyan(vcsLabel(config.vcs?.provider)));
 console.log(chalk.dim(`  Current branch : `) + chalk.cyan(branch ?? "-"));
 if (lastTag) console.log(chalk.dim(`  Last tag       : `) + chalk.cyan(lastTag));
-if (config.simulate) {
-  const simTargets = config.simulate === true ? "all triggers" : config.simulate.join(", ");
-  console.log(chalk.dim(`  Simulate       : `) + chalk.yellow(simTargets));
-}
+if (dryRun) console.log(chalk.dim(`  Mode           : `) + chalk.yellow.bold("dry-run — no files, commits, tags or pushes will be made"));
 console.log();
 
 const { accion } = await inquirer.prompt([
@@ -110,16 +110,12 @@ if ((accion === "commit" || accion === "rollback") && !vcs.supportsVersioning())
 // ── Branch guard (release only) ────────────────────────────────────────
 
 if (accion === "release" && branch) {
-  const { allowed, matched } = checkReleaseBranch(
-    config.git.releaseBranches,
-    branch
-  );
+  const { allowed } = checkReleaseBranch(config.git.releaseBranches, branch);
 
   if (!allowed) {
     const allowed_list = config.git.releaseBranches.join(", ");
 
-    if (config.git.strict) {
-      // Hard block — no way to continue
+    if (config.git.strict && !dryRun) {
       console.log(
         "\n" +
         chalk.bgRed.white.bold("  BLOCKED  ") +
@@ -131,31 +127,32 @@ if (accion === "release" && branch) {
       );
       process.exit(1);
     } else {
-      // Soft warning — user can still proceed
+      const isDryRunBypass = dryRun && config.git.strict;
       console.log(
         "\n" +
         chalk.bgYellow.black.bold("  WARNING  ") +
         "  " +
         chalk.yellow.bold(`You are on branch "${branch}", not on a release branch.`) +
+        (isDryRunBypass ? chalk.dim(" (strict bypassed in dry-run)") : "") +
         "\n" +
         chalk.dim(`  Configured release branches: ${allowed_list}`) +
-        "\n" +
-        chalk.dim("  Releases from feature branches are usually unintentional.") +
         "\n"
       );
 
-      const { continueAnyway } = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "continueAnyway",
-          message: chalk.yellow("Continue anyway?"),
-          default: false,
-        },
-      ]);
+      if (!dryRun) {
+        const { continueAnyway } = await inquirer.prompt([
+          {
+            type: "confirm",
+            name: "continueAnyway",
+            message: chalk.yellow("Continue anyway?"),
+            default: false,
+          },
+        ]);
 
-      if (!continueAnyway) {
-        console.log(chalk.yellow("\n  Release cancelled.\n"));
-        process.exit(0);
+        if (!continueAnyway) {
+          console.log(chalk.yellow("\n  Release cancelled.\n"));
+          process.exit(0);
+        }
       }
 
       console.log();
@@ -197,6 +194,11 @@ if (accion === "rollback") {
     process.exit(0);
   }
 
+  if (dryRun) {
+    console.log(chalk.dim(`\n  [dry-run] rollback to ${selectedTag} — not executed\n`));
+    process.exit(0);
+  }
+
   const spinner = ora({ text: "Executing rollback...", color: "yellow" }).start();
 
   try {
@@ -233,11 +235,8 @@ if (accion === "rollback") {
 
     if (deleteTags) {
       const spinnerTags = ora({ text: "Deleting tags...", color: "yellow" }).start();
-
       try {
-        for (const t of tagsAfter) {
-          vcs.deleteTag(t);
-        }
+        for (const t of tagsAfter) vcs.deleteTag(t);
         spinnerTags.succeed(chalk.green(`${tagsAfter.length} tag(s) deleted.`));
       } catch (err) {
         spinnerTags.fail(chalk.red("Error deleting tags"));
@@ -311,7 +310,6 @@ if (accion === "release") {
   ]);
 
   bumpResult = { targets, bumpType };
-
   console.log(chalk.green(`\n  \u2714 Bump configured: ${bumpType} \u2192 ${targets.join(", ")}\n`));
 }
 
@@ -334,7 +332,6 @@ if (accion === "release" || accion === "changelog") {
     if (action === "none") break;
     if (action === "add") await buildChangelog(config);
     if (action === "edit") await editChangelog(config);
-
     changelogAction = action;
   }
 }
@@ -365,6 +362,7 @@ console.log("\n" + chalk.bold("  Operation summary:"));
 console.log(chalk.dim("  ─────────────────────────"));
 console.log(`  Action    : ${chalk.cyan(accion)}`);
 console.log(`  VCS       : ${chalk.cyan(vcsLabel(config.vcs?.provider))}`);
+if (dryRun) console.log(`  Mode      : ${chalk.yellow.bold("dry-run")}`);
 if (bumpResult) {
   console.log(`  Targets   : ${chalk.cyan(bumpResult.targets.join(", "))}`);
   console.log(`  Bump      : ${chalk.cyan(bumpResult.bumpType)}`);
@@ -385,12 +383,6 @@ printPreActionsSummary(config, accion);
 printPostActionsSummary(config, accion);
 console.log();
 
-// ── Simulation (before confirmation) ────────────────────────────────────────
-
-if (shouldSimulate(config, accion)) {
-  await runSimulation(config, accion);
-}
-
 // ── Confirm & Execute ────────────────────────────────────────────────────────
 
 if (accion === "changelog") {
@@ -400,6 +392,11 @@ if (accion === "changelog") {
     console.log(
       chalk.yellow("\n  \u26A0 The current VCS provider does not support commit/push. The changelog will be saved locally.\n"),
     );
+    process.exit(0);
+  }
+
+  if (dryRun) {
+    console.log(chalk.dim("\n  [dry-run] changelog commit — not executed\n"));
     process.exit(0);
   }
 
@@ -432,7 +429,7 @@ if (accion === "changelog") {
     {
       type: "confirm",
       name: "proceed",
-      message: "Confirm and execute?",
+      message: dryRun ? "Run dry-run? (nothing will be written or pushed)" : "Confirm and execute?",
       default: true,
     },
   ]);
@@ -452,7 +449,11 @@ try {
   process.exit(1);
 }
 
-const spinner = ora({ text: "Executing...", color: "yellow" }).start();
+if (dryRun) {
+  console.log("\n" + chalk.bgYellow.black.bold("  DRY-RUN RESULTS  ") + "\n");
+}
+
+const spinner = ora({ text: dryRun ? "Simulating..." : "Executing...", color: "yellow" }).start();
 
 try {
   if (accion === "release") {
@@ -462,27 +463,32 @@ try {
       message: commitMessage,
       config,
       vcs,
+      dryRun,
     });
 
-    spinner.succeed(chalk.green("Bump completed successfully!"));
+    spinner.succeed(dryRun
+      ? chalk.yellow("Dry-run completed — no changes made.")
+      : chalk.green("Bump completed successfully!")
+    );
     console.log();
 
     for (const item of result.bumpedProjects) {
-      console.log(`  ${item.label.padEnd(12)}: ${chalk.cyan("v" + item.version)}`);
+      const label = dryRun ? chalk.dim("  [dry-run] ") : "  ";
+      console.log(`${label}${item.label.padEnd(12)}: ${chalk.cyan("v" + item.version)}`);
     }
 
     if (result.tag) {
-      console.log(`  Tag         : ${chalk.cyan(result.tag)}`);
+      const label = dryRun ? chalk.dim("  [dry-run] Tag  ") : "  Tag         ";
+      console.log(`${label}: ${chalk.cyan(result.tag)}`);
     }
 
-    if (!vcs.supportsVersioning()) {
-      console.log(chalk.dim("  Note        : versions updated without commit/tag/push."));
-    }
-  } else {
+  } else if (!dryRun) {
     vcs.addAll();
     vcs.commit(commitMessage);
     vcs.pushWithTags();
     spinner.succeed(chalk.green("Operation completed successfully"));
+  } else {
+    spinner.succeed(chalk.yellow(`Dry-run completed — commit "${commitMessage}" not executed.`));
   }
 
   await runPostActions(config, accion);
@@ -491,4 +497,8 @@ try {
   spinner.fail(chalk.red("Error during execution"));
   printError(err);
   process.exit(1);
+}
+
+if (dryRun) {
+  console.log("\n" + chalk.yellow.bold("  ⚠  Dry-run finished. Nothing was written to disk, committed or pushed.") + "\n");
 }
