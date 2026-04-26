@@ -138,7 +138,9 @@ Crea un archivo `vit-config.json` en la raíz de tu proyecto:
   "git": {
     "defaultCommitMessage": "chore: update",
     "releaseCommitMessage": "chore: release",
-    "changelogCommitMessage": "docs: update changelog"
+    "changelogCommitMessage": "docs: update changelog",
+    "releaseBranches": ["main"],
+    "strict": false
   },
   "vcs": {
     "provider": "git"
@@ -168,6 +170,45 @@ Crea un archivo `vit-config.json` en la raíz de tu proyecto:
 | `defaultCommitMessage` | `string` | `chore: update` | Mensaje por defecto para commits sin bump |
 | `releaseCommitMessage` | `string` | `chore: version bump` | Mensaje por defecto para releases |
 | `changelogCommitMessage` | `string` | `docs: update changelog` | Mensaje por defecto para commits de changelog |
+| `releaseBranches` | `string[]` | `["main"]` | Ramas desde las que se permite hacer release |
+| `strict` | `boolean` | `false` | Si `true`, bloquea el release al detectar una rama no permitida |
+
+### Control de ramas para releases
+
+Puedes restringir desde qué ramas se puede ejecutar un release mediante `releaseBranches` y `strict`.
+
+**Modo advertencia** (`strict: false`, por defecto)
+
+Si estás en una rama no permitida, VIT muestra un aviso y pregunta si quieres continuar de todas formas:
+
+```
+  WARNING   You are on branch "feat/my-feature", not on a release branch.
+  Configured release branches: main
+
+? Continue anyway? (y/N)
+```
+
+Con `--yes` o en modo headless se acepta automáticamente el aviso y el release continúa.
+
+**Modo estricto** (`strict: true`)
+
+Si estás en una rama no permitida, el release queda bloqueado y VIT termina con error:
+
+```
+  BLOCKED   Releases are not allowed from branch "feat/my-feature".
+  Allowed branches: main
+```
+
+En modo `--dry-run`, el bloqueo estricto se ignora para permitir simulaciones desde cualquier rama.
+
+**Ejemplo con múltiples ramas permitidas:**
+
+```json
+"git": {
+  "releaseBranches": ["main", "release", "hotfix"],
+  "strict": true
+}
+```
 
 ### `vcs`
 
