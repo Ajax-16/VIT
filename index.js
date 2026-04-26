@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const { version } = require("./package.json");
 import inquirer from "inquirer";
 import chalk from "chalk";
 import ora from "ora";
@@ -15,8 +18,10 @@ const vcs = getVcsAdapter(config.vcs?.provider ?? "git");
 console.log(
   "\n" +
   chalk.bgHex("#046c04").white.bold("  VIT  ") +
-  " " +
+  "\n" +
   chalk.hex("#046c04").bold("Version It!") +
+  "  " +
+  chalk.dim(`v${version}`) +
   "\n",
 );
 
@@ -267,12 +272,11 @@ if (commitMessage) {
   console.log(`  Message   : ${chalk.cyan(commitMessage)}`);
 }
 console.log(
-  `  Changelog : ${
-    changelogAction === "add"
-      ? chalk.green("new entry")
-      : changelogAction === "edit"
-        ? chalk.yellow("edit existing")
-        : chalk.dim("no")
+  `  Changelog : ${changelogAction === "add"
+    ? chalk.green("new entry")
+    : changelogAction === "edit"
+      ? chalk.yellow("edit existing")
+      : chalk.dim("no")
   }`,
 );
 

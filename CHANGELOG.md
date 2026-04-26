@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.7] - 26/04/2026
+
+### 🚀 Features
+
+- Added version display on entry
+
+
+
+# Changelog
+
 ## [0.0.5] - 26/04/2026
 
 ### 🚀 Features
