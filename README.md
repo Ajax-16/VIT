@@ -131,6 +131,18 @@ Personaliza los tipos de commit disponibles en el changelog. Se fusionan con los
 
 Tipos incluidos por defecto: `feat`, `fix`, `refactor`, `perf`, `revert`, `docs`, `style`.
 
+### `envFile` (opcional)
+
+Ruta a un archivo `.env` global cuyas variables estarán disponibles en **todas** las actions. Las variables del archivo tienen menor prioridad que `env` y `promptEnv` definidos en cada action.
+
+```json
+{
+  "envFile": ".env"
+}
+```
+
+Ver [Variables de entorno y `envFile`](#variables-de-entorno-y-envfile) para más detalles.
+
 ---
 
 ## Pre-actions y Post-actions
@@ -155,6 +167,7 @@ VIT permite ejecutar comandos automáticamente antes (`preActions`) y después (
   "continueOnError": false,
   "showOutput": true,
   "timeoutMs": 30000,
+  "envFile": ".env.production",
   "env": {
     "NODE_ENV": "production"
   },
@@ -175,8 +188,9 @@ VIT permite ejecutar comandos automáticamente antes (`preActions`) y después (
 | `continueOnError` | `boolean` | `false` | Si `true`, un error no detiene la ejecución |
 | `showOutput` | `boolean` | `true` | Mostrar stdout/stderr en tiempo real |
 | `timeoutMs` | `number` | `null` | Timeout en ms. `null` = sin límite |
-| `env` | `object` | `{}` | Variables de entorno adicionales |
-| `promptEnv` | `array` | `[]` | Variables que se piden interactivamente al usuario |
+| `envFile` | `string` | `null` | Ruta a un `.env` específico para esta action (mayor prioridad que el `envFile` global) |
+| `env` | `object` | `{}` | Variables de entorno estáticas (mayor prioridad que `envFile`) |
+| `promptEnv` | `array` | `[]` | Variables que se piden interactivamente al usuario (máxima prioridad) |
 | `pipeline` | `array` | `[]` | Pasos previos que enriquecen el entorno del comando |
 | `command` | `string` | — | Comando principal a ejecutar |
 
@@ -200,6 +214,75 @@ Permite pedir valores sensibles (contraseñas, OTPs) justo antes de ejecutar la 
 ```
 
 Usa `"validate": "otp"` para validar que el valor sea un código de 6 dígitos.
+
+---
+
+## Variables de entorno y `envFile`
+
+VIT soporta cargar variables de entorno desde archivos `.env` en dos niveles: **global** (para todas las actions) y **por action** (solo para esa action). Las variables del nivel más cercano tienen prioridad.
+
+### Orden de prioridad (menor → mayor)
+
+```
+process.env  →  envFile global  →  envFile de action  →  action.env  →  promptEnv
+```
+
+### `envFile` global
+
+Se define en la raíz del `vit-config.json`. Sus variables están disponibles en todas las actions.
+
+```json
+{
+  "envFile": ".env",
+  "preActions": [...]
+}
+```
+
+### `envFile` por action
+
+Se define dentro de una action concreta. Sobreescribe las variables del `envFile` global con el mismo nombre.
+
+```json
+{
+  "id": "deploy",
+  "envFile": ".env.production",
+  "command": "scp ./dist ${DEPLOY_USER}@${SERVER_HOST}:/var/www"
+}
+```
+
+### Ejemplo completo
+
+**`vit-config.json`:**
+```json
+{
+  "envFile": ".env",
+  "postActions": [
+    {
+      "id": "deploy",
+      "label": "Deploy a producción",
+      "on": ["release"],
+      "envFile": ".env.production",
+      "command": "echo Desplegando como ${DEPLOY_USER} en ${APP_ENV}"
+    }
+  ]
+}
+```
+
+**`.env`** (disponible para todas las actions):
+```env
+APP_ENV=development
+DEPLOY_USER=dev
+```
+
+**`.env.production`** (solo para la action `deploy`, sobreescribe `.env`):
+```env
+APP_ENV=production
+DEPLOY_USER=deploy-bot
+```
+
+En la action `deploy`, `APP_ENV` será `production` y `DEPLOY_USER` será `deploy-bot` porque `.env.production` tiene prioridad sobre `.env`.
+
+> **Nota:** Los archivos `.env` se parsean internamente sin necesidad de instalar `dotenv`. Se soportan comentarios (`# comentario`), líneas vacías y valores con comillas simples o dobles.
 
 ---
 
@@ -253,7 +336,7 @@ Esta es la distinción más importante a la hora de diseñar tu configuración.
 
 ### Múltiples actions — tareas independientes
 
-- Cada action tiene su propio `on`, `cwd`, `env`, `promptEnv`, `showOutput` y `timeoutMs`.
+- Cada action tiene su propio `on`, `cwd`, `env`, `envFile`, `promptEnv`, `showOutput` y `timeoutMs`.
 - Cada una aparece como un bloque separado con su propio spinner y label en la UI.
 - **No comparten variables** entre sí.
 - Son conceptualmente tareas distintas: tests, build, deploy, notificación...
@@ -344,6 +427,35 @@ Combina `pipeline` para construir la ruta de destino y `promptEnv` para pedir la
   ],
   "command": "sshpass -p ${SSH_PASS} scp -r ./dist user@produccion.miserver.com:/var/www/releases/${VERSION}-${DATE}"
 }
+```
+
+---
+
+### Deploy con variables de entorno desde archivo
+
+Usa `envFile` por action para cargar credenciales de producción sin exponerlas en el config.
+
+```json
+{
+  "id": "deploy-production",
+  "label": "Deploy a producción",
+  "on": ["release"],
+  "showOutput": true,
+  "envFile": ".env.production",
+  "pipeline": [
+    {
+      "command": "node -e \"process.stdout.write(require('./package.json').version)\"",
+      "captureAs": "VERSION"
+    }
+  ],
+  "command": "scp -r ./dist ${DEPLOY_USER}@${SERVER_HOST}:/var/www/releases/${VERSION}"
+}
+```
+
+**`.env.production`:**
+```env
+DEPLOY_USER=deploy-bot
+SERVER_HOST=produccion.miservidor.com
 ```
 
 ---
@@ -447,6 +559,7 @@ Ejemplo de configuración completa para un monorepo con backend y frontend.
 
 ```json
 {
+  "envFile": ".env",
   "projects": [
     { "id": "backend",  "label": "Backend",  "path": "./Backend",  "tagPrefix": "vback" },
     { "id": "frontend", "label": "Frontend", "path": "./Frontend", "tagPrefix": "vfront" }
@@ -487,6 +600,7 @@ Ejemplo de configuración completa para un monorepo con backend y frontend.
       "label": "Deploy a producción",
       "on": ["release"],
       "showOutput": true,
+      "envFile": ".env.production",
       "promptEnv": [
         { "name": "SSH_PASS", "message": "Contraseña SSH:" },
         { "name": "OTP",      "message": "Código OTP:", "validate": "otp" }
@@ -495,7 +609,7 @@ Ejemplo de configuración completa para un monorepo con backend y frontend.
         { "command": "node -e \"process.stdout.write(require('./Backend/package.json').version)\"",  "captureAs": "BACK_VERSION" },
         { "command": "node -e \"process.stdout.write(require('./Frontend/package.json').version)\"", "captureAs": "FRONT_VERSION" }
       ],
-      "command": "sshpass -p ${SSH_PASS} ssh user@produccion.miserver.com \"cd /var/www && ./deploy.sh ${BACK_VERSION} ${FRONT_VERSION} ${OTP}\""
+      "command": "sshpass -p ${SSH_PASS} ssh ${DEPLOY_USER}@${SERVER_HOST} \"cd /var/www && ./deploy.sh ${BACK_VERSION} ${FRONT_VERSION} ${OTP}\""
     },
     {
       "id": "summary",
