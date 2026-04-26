@@ -1,12 +1,14 @@
-# Registro de cambios
+# Changelog
 
 ## [0.0.5] - 26/04/2026
 
 ### 🚀 Features
 
-- PromptEnv on postActions
+- preActions and postActions and pipelines added
 
 
+
+# Registro de cambios
 
 # Registro de cambios
 
