@@ -2,6 +2,9 @@
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const { version } = require("./package.json");
+import { writeFileSync, mkdirSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 import inquirer from "inquirer";
 import chalk from "chalk";
 import ora from "ora";
@@ -12,13 +15,50 @@ import { getVcsAdapter, vcsLabel } from "./lib/vcs/index.js";
 import { printPostActionsSummary, runPostActions } from "./lib/post-actions.js";
 import { printPreActionsSummary, runPreActions } from "./lib/pre-actions.js";
 
+function writeErrorLog(err) {
+  const logDir = join(tmpdir(), "vit-logs");
+  mkdirSync(logDir, { recursive: true });
+  const logFile = join(logDir, `vit-error-${Date.now()}.log`);
+  const content = [
+    `VIT Error Log — ${new Date().toISOString()}`,
+    "─".repeat(50),
+    "",
+    `Message : ${err.message}`,
+    err.original ? `Cause   : ${err.original.message}` : null,
+    "",
+    "Stack trace:",
+    err.stack,
+    err.original?.stack ? "\nOriginal stack:\n" + err.original.stack : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  writeFileSync(logFile, content, "utf-8");
+  return logFile;
+}
+
+function printError(err) {
+  const logFile = writeErrorLog(err);
+  console.error(
+    "\n" +
+    chalk.bgRed.white.bold("  ERROR  ") +
+    "  " +
+    chalk.red.bold(err.message) +
+    (err.original ? "\n         " + chalk.dim("└─ " + err.original.message) : "") +
+    "\n\n" +
+    chalk.dim("  Log guardado en:") +
+    "\n" +
+    chalk.cyan("  " + logFile) +
+    "\n"
+  );
+}
+
 const config = loadVitConfig();
 const vcs = getVcsAdapter(config.vcs?.provider ?? "git");
 
 console.log(
   "\n" +
   chalk.bgHex("#046c04").white.bold("  VIT  ") +
-  "\n" +
+  "  " +
   chalk.hex("#046c04").bold("Version It!") +
   "  " +
   chalk.dim(`v${version}`) +
@@ -110,7 +150,7 @@ if (accion === "rollback") {
     }
   } catch (err) {
     spinner.fail(chalk.red("Error during rollback"));
-    console.error("\n" + chalk.red(err.message) + "\n");
+    printError(err);
     process.exit(1);
   }
 
@@ -140,7 +180,7 @@ if (accion === "rollback") {
         spinnerTags.succeed(chalk.green(`${tagsAfter.length} tag(s) deleted.`));
       } catch (err) {
         spinnerTags.fail(chalk.red("Error deleting tags"));
-        console.error("\n" + chalk.red(err.message) + "\n");
+        printError(err);
       }
     } else {
       console.log(chalk.dim("  Tags preserved.\n"));
@@ -338,8 +378,12 @@ if (accion === "changelog") {
 
 // ── Run ──────────────────────────────────────────────────────────────────────
 
-// Pre-actions run BEFORE commit/bump/push
-await runPreActions(config.preActions ?? [], accion);
+try {
+  await runPreActions(config.preActions ?? [], accion);
+} catch (err) {
+  printError(err);
+  process.exit(1);
+}
 
 const spinner = ora({ text: "Executing...", color: "yellow" }).start();
 
@@ -374,14 +418,10 @@ try {
     spinner.succeed(chalk.green("Operation completed successfully"));
   }
 
-  // Post-actions run AFTER commit/bump/push
   await runPostActions(config.postActions ?? [], accion);
 
 } catch (err) {
   spinner.fail(chalk.red("Error during execution"));
-  console.error("\n" + chalk.red(err.message));
-  if (err.original)
-    console.error(chalk.dim("  Original cause: " + err.original.message));
-  console.error(chalk.dim("\n" + err.stack) + "\n");
+  printError(err);
   process.exit(1);
 }
