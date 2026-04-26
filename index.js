@@ -10,7 +10,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { bump } from "./lib/bump.js";
 import { buildChangelog, editChangelog } from "./lib/changelog.js";
-import { loadVitConfig } from "./lib/config.js";
+import { loadVitConfig, checkReleaseBranch } from "./lib/config.js";
 import { getVcsAdapter, vcsLabel } from "./lib/vcs/index.js";
 import { printPostActionsSummary, runPostActions } from "./lib/post-actions.js";
 import { printPreActionsSummary, runPreActions } from "./lib/pre-actions.js";
@@ -100,6 +100,62 @@ if ((accion === "commit" || accion === "rollback") && !vcs.supportsVersioning())
     ),
   );
   process.exit(0);
+}
+
+// ── Branch guard (release only) ────────────────────────────────────────
+
+if (accion === "release" && branch) {
+  const { allowed, matched } = checkReleaseBranch(
+    config.git.releaseBranches,
+    branch
+  );
+
+  if (!allowed) {
+    const allowed_list = config.git.releaseBranches.join(", ");
+
+    if (config.git.strict) {
+      // Hard block — no way to continue
+      console.log(
+        "\n" +
+        chalk.bgRed.white.bold("  BLOCKED  ") +
+        "  " +
+        chalk.red.bold(`Releases are not allowed from branch "${branch}".`) +
+        "\n" +
+        chalk.dim(`  Allowed branches: ${allowed_list}`) +
+        "\n"
+      );
+      process.exit(1);
+    } else {
+      // Soft warning — user can still proceed
+      console.log(
+        "\n" +
+        chalk.bgYellow.black.bold("  WARNING  ") +
+        "  " +
+        chalk.yellow.bold(`You are on branch "${branch}", not on a release branch.`) +
+        "\n" +
+        chalk.dim(`  Configured release branches: ${allowed_list}`) +
+        "\n" +
+        chalk.dim("  Releases from feature branches are usually unintentional.") +
+        "\n"
+      );
+
+      const { continueAnyway } = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "continueAnyway",
+          message: chalk.yellow("Continue anyway?"),
+          default: false,
+        },
+      ]);
+
+      if (!continueAnyway) {
+        console.log(chalk.yellow("\n  Release cancelled.\n"));
+        process.exit(0);
+      }
+
+      console.log();
+    }
+  }
 }
 
 // ── Rollback ────────────────────────────────────────────────────────────────
