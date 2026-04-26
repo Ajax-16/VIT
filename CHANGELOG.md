@@ -6,8 +6,6 @@
 
 - Now you can enter a .env file globally or in a given action to use it.
 
-
-
 # Changelog
 
 ## [0.0.9] - 26/04/2026
