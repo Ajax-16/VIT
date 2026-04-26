@@ -1,5 +1,15 @@
 # Registro de cambios
 
+## [0.0.5] - 26/04/2026
+
+### 🚀 Features
+
+- PromptEnv on postActions
+
+
+
+# Registro de cambios
+
 ## [0.0.4] - 26/04/2026
 
 ### 🚀 Features
