@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.0.13] - 26/04/2026
+
+### 🚀 Features
+
+- refactor para fixes varios
+
+
+
+# Changelog
+
 ## [0.0.10] - 26/04/2026
 
 ### 🚀 Features
