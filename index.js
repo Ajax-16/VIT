@@ -98,7 +98,6 @@ let accion;
 if (cli.headless) {
   accion = cli.command;
 } else if (cli.command) {
-  // Command given via args but not fully headless — skip menu, still ask remaining prompts
   accion = cli.command;
   console.log(chalk.dim(`  Command pre-selected: ${chalk.cyan(accion)}\n`));
 } else {
@@ -184,7 +183,6 @@ if (accion === "rollback") {
   let selectedTag;
 
   if (cli.tag) {
-    // Tag provided via --tag (headless or semi-interactive)
     selectedTag = cli.tag;
     if (!tags.includes(selectedTag)) {
       console.log(chalk.red(`\n  ✖ Tag "${cli.tag}" not found. Available: ${tags.join(", ")}\n`));
@@ -294,7 +292,6 @@ if (accion === "release") {
     targets = t.includes("__all__") ? configuredProjects.map((p) => p.id) : t;
   }
 
-  // Bump type: use --bump if provided (with or without --yes), else prompt
   let bumpType;
   if (cli.bump) {
     const valid = ["patch", "minor", "major"];
@@ -344,11 +341,16 @@ if (!cli.headless && (accion === "release" || accion === "changelog")) {
   }
 }
 
-// Commit message: use --message if provided, else prompt
+// Commit message
+// - headless o --yes sin --message → usar default sin preguntar
+// - --message explícito            → usar directamente
+// - ninguno de los anteriores      → prompt
 if (accion !== "changelog") {
   const defaultMsg = accion === "release" ? config.git.releaseCommitMessage : config.git.defaultCommitMessage;
-  if (cli.headless) {
+  if (cli.headless || cli.yes) {
+    // --yes solo o headless: usar el mensaje provisto o el default, sin prompt
     commitMessage = cli.message ?? defaultMsg;
+    if (!cli.headless) console.log(chalk.dim(`  Message: ${chalk.cyan(commitMessage)}\n`));
   } else if (cli.message) {
     commitMessage = cli.message;
     console.log(chalk.dim(`  Message pre-selected: ${chalk.cyan(commitMessage)}\n`));
