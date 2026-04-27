@@ -21,11 +21,33 @@
     "vit": "index.js"
   },
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage"
   },
   "dependencies": {
     "chalk": "^5.3.0",
     "inquirer": "^9.3.7",
     "ora": "^8.1.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "extensionsToTreatAsEsm": [".js"],
+    "moduleNameMapper": {
+      "^chalk$": "<rootDir>/tests/__mocks__/chalk.js",
+      "^ora$": "<rootDir>/tests/__mocks__/ora.js",
+      "^inquirer$": "<rootDir>/tests/__mocks__/inquirer.js"
+    },
+    "transform": {},
+    "testMatch": [
+      "<rootDir>/tests/**/*.test.js"
+    ],
+    "clearMocks": true,
+    "collectCoverageFrom": [
+      "lib/**/*.js"
+    ]
   }
 }
