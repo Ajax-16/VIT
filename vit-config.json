@@ -23,38 +23,6 @@
       "tagPrefix": "v"
     }
   ],
-  "preActions": [
-    {
-      "id": "preflight",
-      "label": "Preflight checks",
-      "on": ["release"],
-      "continueOnError": false,
-      "showOutput": true,
-      "pipeline": [
-        {
-          "id": "node-version",
-          "command": "node -e \"process.stdout.write(process.versions.node)\"",
-          "captureAs": "NODE_VERSION"
-        },
-        {
-          "id": "git-branch",
-          "command": "git rev-parse --abbrev-ref HEAD",
-          "captureAs": "GIT_BRANCH"
-        },
-        {
-          "id": "git-author",
-          "command": "git config user.name",
-          "captureAs": "GIT_AUTHOR"
-        },
-        {
-          "id": "current-version",
-          "command": "node -e \"process.stdout.write(require('./package.json').version)\"",
-          "captureAs": "CURRENT_VERSION"
-        }
-      ],
-      "command": "node -e \"console.log('\\n  📋 Preflight\\n  Node     : ${NODE_VERSION}\\n  Branch   : ${GIT_BRANCH}\\n  Author   : ${GIT_AUTHOR}\\n  Version  : ${CURRENT_VERSION}\\n  Env      : ${APP_ENV}\\n')\""
-    }
-  ],
   "postActions": [
     {
       "id": "release-summary",

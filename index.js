@@ -374,7 +374,10 @@ if (accion === "rollback") {
           doPush = ans.doPush;
         }
         if (doPush) {
-          const pushSpinner = ora({ text: "Pushing...", color: "cyan" }).start();
+          const pushSpinner = ora({
+            text: "Pushing...",
+            color: "cyan",
+          }).start();
           try {
             vcs.pushWithTags();
             pushSpinner.succeed(chalk.green("Pushed successfully."));
@@ -650,7 +653,7 @@ console.log(
     semanticChangelog
       ? changelogDone
         ? chalk.magenta("semantic — fully regenerated")
-        : chalk.dim("semantic — skipped (dry-run)")
+        : chalk.dim("semantic — skipped")
       : changelogDone
         ? chalk.green("manual — entry added")
         : chalk.dim("none")

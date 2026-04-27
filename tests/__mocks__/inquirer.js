@@ -1,4 +1,5 @@
-// Stub for inquirer — overridden per-test via inquirer.__setAnswers()
+import { jest } from "@jest/globals";
+
 let _queue = [];
 
 const inquirer = {
@@ -7,12 +8,16 @@ const inquirer = {
     const qs = Array.isArray(questions) ? questions : [questions];
     for (const q of qs) {
       const next = _queue.shift();
-      answers[q.name] = next !== undefined ? next : (q.default ?? '');
+      answers[q.name] = next !== undefined ? next : (q.default ?? "");
     }
     return answers;
   }),
-  __setAnswers(arr) { _queue = [...arr]; },
-  __reset()        { _queue = []; },
+  __setAnswers(arr) {
+    _queue = [...arr];
+  },
+  __reset() {
+    _queue = [];
+  },
 };
 
 export default inquirer;
