@@ -1,5 +1,12 @@
 # Changelog
 
+## [v-0.0.21] - 27/04/2026
+
+### 🐛 Bug fixes
+
+- Solved an error that produced semantic mode not to work | v-0.0.21
+
+
 ## [v-0.0.20] - 27/04/2026
 
 ### 🐛 Bug fixes
