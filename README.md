@@ -133,14 +133,16 @@ Crea un archivo `vit-config.json` en la raíz de tu proyecto:
 {
   "changelog": {
     "path": "./CHANGELOG.md",
-    "title": "Changelog"
+    "title": "Changelog",
+    "semantic": false
   },
   "git": {
     "defaultCommitMessage": "chore: update",
     "releaseCommitMessage": "chore: release",
     "changelogCommitMessage": "docs: update changelog",
     "releaseBranches": ["main"],
-    "strict": false
+    "strict": false,
+    "rollbackStrategy": "revert"
   },
   "vcs": {
     "provider": "git"
@@ -162,6 +164,37 @@ Crea un archivo `vit-config.json` en la raíz de tu proyecto:
 |---|---|---|---|
 | `path` | `string` | `./CHANGELOG.md` | Ruta al archivo de changelog |
 | `title` | `string` | `Changelog` | Título del changelog |
+| `semantic` | `boolean` | `false` | Si `true`, el changelog se genera automáticamente a partir de los commits usando [Conventional Commits](https://www.conventionalcommits.org/) |
+
+#### Changelog semántico
+
+Cuando `semantic: true`, VIT analiza el historial de commits desde el último tag y genera el changelog automáticamente agrupando los commits por tipo (`feat`, `fix`, `refactor`…). El formato esperado en los mensajes de commit es:
+
+```
+<tipo>(<scope opcional>): <descripción>
+```
+
+Ejemplos válidos:
+
+```
+feat: nueva pantalla de login
+fix(api): corregir timeout en peticiones lentas
+refactor(auth): extraer lógica de validación
+```
+
+Los commits que no sigan este formato son ignorados automáticamente.
+
+**Flujo interactivo** — VIT muestra los commits detectados, permite deseleccionar los que no quieras incluir y solicita opcionalmente un texto introductorio antes de guardar.
+
+**Modo headless** — el changelog se regenera silenciosamente sin prompts.
+
+```json
+"changelog": {
+  "path": "./CHANGELOG.md",
+  "title": "Changelog",
+  "semantic": true
+}
+```
 
 ### `git`
 
@@ -170,10 +203,11 @@ Crea un archivo `vit-config.json` en la raíz de tu proyecto:
 | `defaultCommitMessage` | `string` | `chore: update` | Mensaje por defecto para commits sin bump |
 | `releaseCommitMessage` | `string` | `chore: version bump` | Mensaje por defecto para releases |
 | `changelogCommitMessage` | `string` | `docs: update changelog` | Mensaje por defecto para commits de changelog |
-| `releaseBranches` | `string[]` | `["main"]` | Ramas desde las que se permite hacer release |
+| `releaseBranches` | `string[]` | `[]` | Ramas desde las que se permite hacer release |
 | `strict` | `boolean` | `false` | Si `true`, bloquea el release al detectar una rama no permitida |
+| `rollbackStrategy` | `string` | `"revert"` | Estrategia de rollback: `"revert"` (por defecto) o `"reset"` |
 
-### Control de ramas para releases
+#### Control de ramas para releases
 
 Puedes restringir desde qué ramas se puede ejecutar un release mediante `releaseBranches` y `strict`.
 
@@ -209,6 +243,35 @@ En modo `--dry-run`, el bloqueo estricto se ignora para permitir simulaciones de
   "strict": true
 }
 ```
+
+#### Estrategia de rollback
+
+`rollbackStrategy` controla cómo VIT deshace los cambios al hacer un rollback a un tag anterior.
+
+Antes de ejecutar cualquier acción, VIT muestra siempre un **preview de los commits afectados** junto con la estrategia activa:
+
+```
+  Commits that will be rolled back:  (strategy: revert)
+  ─────────────────────────────────────────────────────
+  · feat: nueva pantalla de login
+  · fix: corregir bug en el formulario
+  · chore: release v1.1.0
+
+  Strategy  : revert — creates a new commit, history preserved
+  Target tag: v1.0.0 (3 commit(s) affected)
+```
+
+**`"revert"` (por defecto)** — crea un nuevo commit que deshace los cambios. La historia de git se mantiene intacta y se puede hacer push normal sin `--force`. Recomendado para repos compartidos con otros colaboradores.
+
+**`"reset"`** — mueve el puntero HEAD al tag destino, reescribiendo la historia. Requiere force push (`git push --force`). Usar solo en repos personales o ramas propias.
+
+```json
+"git": {
+  "rollbackStrategy": "revert"
+}
+```
+
+> **Nota:** Con la estrategia `reset`, VIT también ofrece eliminar los tags que quedaron por encima del tag destino, ya que apuntarían a commits que ya no existen en la historia local.
 
 ### `vcs`
 
