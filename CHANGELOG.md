@@ -1,5 +1,17 @@
 # Changelog
 
+## [v-0.0.20] - 27/04/2026
+
+### 🐛 Bug fixes
+
+- *(semantic-changelog)* include unreleased commits when building changelog during release
+
+
+### 📚 Documentation
+
+- update changelog
+
+
 ## [v-0.0.19] - 27/04/2026
 
 ### 🚀 Features

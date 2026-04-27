@@ -77,7 +77,7 @@ function printError(err) {
 // ── Boot banner ───────────────────────────────────────────────────────────────
 const config = loadVitConfig();
 const vcs = getVcsAdapter(config.vcs?.provider ?? "git");
-const semanticChangelog = config.changelog?.semanticChangelog === true;
+const semanticChangelog = config.changelog?.semantic === true;
 
 console.log(
   "\n" +
