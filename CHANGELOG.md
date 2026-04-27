@@ -1,5 +1,14 @@
 # Changelog
 
+## [v-0.0.25] - 27/04/2026
+
+### 🚀 Features
+
+- Added --semantic flag to use semantic mode on changelog without having to change vit-config.json
+
+- implement 4 changelog modes (semantic x headless matrix)
+
+
 ## [v-0.0.24] - 27/04/2026
 
 ### 🐛 Bug fixes
