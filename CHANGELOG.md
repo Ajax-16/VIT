@@ -1,5 +1,33 @@
 # Changelog
 
+## [v-0.0.19] - 27/04/2026
+
+### 🚀 Features
+
+- semantic changelog regenerates full history from all git tags
+
+- wire buildSemanticChangelog into index.js changelog flow
+
+- add semantic changelog support based on conventional commits
+
+
+### 🐛 Bug fixes
+
+- skip path prompt when changelog.path is already configured
+
+
+### 🚜 Refactoring
+
+- resolve changelog path directly from config, remove prompt
+
+- semantic changelog as a structural mode, not a menu option
+
+
+### 📚 Documentation
+
+- update changelog
+
+
 ## [v-0.0.18] - 27/04/2026
 
 ### 🐛 Bug fixes
