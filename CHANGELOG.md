@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.0.18] - 27/04/2026
+
+### 🚀 Features
+
+- wire buildSemanticChangelog into index.js changelog flow
+
+- add semantic changelog support based on conventional commits
+
+
+### 🚜 Refactoring
+
+- semantic changelog as a structural mode, not a menu option
+
+
+
+## [0.0.19] - 27/04/2026
+
+### 🚀 Features
+
+- wire buildSemanticChangelog into index.js changelog flow
+
+- add semantic changelog support based on conventional commits
+
+
+
+# Changelog
+
 ## [0.0.14] - 26/04/2026
 
 ### 🚀 Features
