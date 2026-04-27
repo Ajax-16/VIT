@@ -1,10 +1,19 @@
 # Changelog
 
+## [v-0.0.23] - 27/04/2026
+
+### 🚀 Features
+
+- *(rollback)* revert strategy by default, reset via config + commit preview
+
+
 ## [v-0.0.22] - 27/04/2026
 
 ### 🐛 Bug fixes
 
 - specified dry-run on changelog summary operation when dry run was not selected
+
+- test
 
 
 ### 📚 Documentation
