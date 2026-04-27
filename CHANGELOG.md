@@ -1,5 +1,19 @@
 # Changelog
 
+## [v-0.0.24] - 27/04/2026
+
+### 🐛 Bug fixes
+
+- remove redundant extensionsToTreatAsEsm (.js inferred from type:module)
+
+- use cross-platform jest invocation for Windows compatibility
+
+
+### 📚 Documentation
+
+- add semantic changelog and rollbackStrategy documentation
+
+
 ## [v-0.0.23] - 27/04/2026
 
 ### 🚀 Features
