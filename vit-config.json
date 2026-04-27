@@ -1,7 +1,8 @@
 {
   "changelog": {
     "path": "./CHANGELOG.md",
-    "title": "Changelog"
+    "title": "Changelog",
+    "semanticChangelog": false
   },
   "git": {
     "defaultCommitMessage": "chore: update",
