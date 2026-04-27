@@ -578,7 +578,7 @@ console.log(
     semanticChangelog
       ? changelogDone
         ? chalk.magenta("semantic — fully regenerated")
-        : chalk.dim("semantic — skipped (dry-run)")
+        : chalk.dim("semantic — skipped")
       : changelogDone
         ? chalk.green("manual — entry added")
         : chalk.dim("none")
