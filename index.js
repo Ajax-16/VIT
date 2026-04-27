@@ -9,7 +9,7 @@ import inquirer from "inquirer";
 import chalk from "chalk";
 import ora from "ora";
 import { bump } from "./lib/bump.js";
-import { buildChangelog, editChangelog } from "./lib/changelog.js";
+import { buildChangelog, buildSemanticChangelog, editChangelog } from "./lib/changelog.js";
 import { loadVitConfig, checkReleaseBranch } from "./lib/config.js";
 import { getVcsAdapter, vcsLabel } from "./lib/vcs/index.js";
 import { printPostActionsSummary, runPostActions } from "./lib/post-actions.js";
@@ -66,6 +66,9 @@ function printError(err) {
 const config = loadVitConfig();
 const vcs = getVcsAdapter(config.vcs?.provider ?? "git");
 
+// Resolve whether semantic changelog is active
+const semanticChangelog = config.changelog?.semanticChangelog === true;
+
 console.log(
   "\n" +
   chalk.bgHex("#046c04").white.bold("  VIT  ") +
@@ -83,9 +86,10 @@ const lastTag = vcs.getLastTag();
 
 console.log(chalk.dim(`  VCS            : `) + chalk.cyan(vcsLabel(config.vcs?.provider)));
 console.log(chalk.dim(`  Current branch : `) + chalk.cyan(branch ?? "-"));
-if (lastTag)      console.log(chalk.dim(`  Last tag       : `) + chalk.cyan(lastTag));
-if (dryRun)       console.log(chalk.dim(`  Mode           : `) + chalk.yellow.bold("dry-run — no files, commits, tags or pushes will be made"));
-if (cli.headless) console.log(chalk.dim(`  Mode           : `) + chalk.cyan.bold("headless — running without prompts"));
+if (lastTag)           console.log(chalk.dim(`  Last tag       : `) + chalk.cyan(lastTag));
+if (semanticChangelog) console.log(chalk.dim(`  Changelog mode : `) + chalk.magenta("semantic"));
+if (dryRun)            console.log(chalk.dim(`  Mode           : `) + chalk.yellow.bold("dry-run — no files, commits, tags or pushes will be made"));
+if (cli.headless)      console.log(chalk.dim(`  Mode           : `) + chalk.cyan.bold("headless — running without prompts"));
 console.log();
 
 // ── Resolve action ────────────────────────────────────────────────────────
@@ -320,22 +324,38 @@ if (accion === "release") {
   if (!cli.headless && !cli.bump) console.log(chalk.green(`\n  ✔ Bump configured: ${bumpType} → ${targets.join(", ")}\n`));
 }
 
-// Changelog step — skipped in headless mode
+// ── Changelog step ────────────────────────────────────────────────────────
+// Skipped in headless mode.
+// When semanticChangelog = true, "Add new entry" calls buildSemanticChangelog
+// instead of the manual buildChangelog.
 if (!cli.headless && (accion === "release" || accion === "changelog")) {
   while (true) {
+    const addLabel = semanticChangelog
+      ? "Add new entry  (semantic — from commits)"
+      : "Add new entry";
+
     const { action } = await inquirer.prompt([
       {
         type: "list", name: "action", message: "What to do with the changelog?",
         choices: [
           { name: "Do nothing", value: "none" },
-          { name: "Add new entry", value: "add" },
+          { name: addLabel,     value: "add" },
           { name: "Edit existing version", value: "edit" },
         ],
         default: "none",
       },
     ]);
+
     if (action === "none") break;
-    if (action === "add")  await buildChangelog(config);
+
+    if (action === "add") {
+      if (semanticChangelog) {
+        await buildSemanticChangelog(config);
+      } else {
+        await buildChangelog(config);
+      }
+    }
+
     if (action === "edit") await editChangelog(config);
     changelogAction = action;
   }
@@ -372,8 +392,9 @@ console.log("\n" + chalk.bold("  Operation summary:"));
 console.log(chalk.dim("  ─────────────────────────"));
 console.log(`  Action    : ${chalk.cyan(accion)}`);
 console.log(`  VCS       : ${chalk.cyan(vcsLabel(config.vcs?.provider))}`);
-if (dryRun)       console.log(`  Mode      : ${chalk.yellow.bold("dry-run")}`);
-if (cli.headless) console.log(`  Mode      : ${chalk.cyan.bold("headless")}`);
+if (semanticChangelog) console.log(`  Changelog : ${chalk.magenta("semantic")}`);
+if (dryRun)            console.log(`  Mode      : ${chalk.yellow.bold("dry-run")}`);
+if (cli.headless)      console.log(`  Mode      : ${chalk.cyan.bold("headless")}`);
 if (bumpResult) {
   console.log(`  Targets   : ${chalk.cyan(bumpResult.targets.join(", "))}`);
   console.log(`  Bump      : ${chalk.cyan(bumpResult.bumpType)}`);
@@ -381,7 +402,7 @@ if (bumpResult) {
 if (commitMessage) console.log(`  Message   : ${chalk.cyan(commitMessage)}`);
 console.log(
   `  Changelog : ${
-    changelogAction === "add"  ? chalk.green("new entry") :
+    changelogAction === "add"  ? (semanticChangelog ? chalk.magenta("semantic entry") : chalk.green("new entry")) :
     changelogAction === "edit" ? chalk.yellow("edit existing") :
     chalk.dim("no")
   }`,
