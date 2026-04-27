@@ -71,6 +71,7 @@ vit [comando] [opciones]
 | `--message <msg>` | `-m` | Mensaje del commit |
 | `--tag <tag>` | `-t` | Tag destino para rollback |
 | `--projects <ids>` | `-p` | IDs de proyectos separados por comas (monorepo) |
+| `--semantic` | `-s` | Activa modo de changelog semántico |
 | `--yes` | `-y` | Confirma todo automáticamente sin prompts (modo headless) |
 | `--dry-run` | `-d` | Simula la operación sin escribir ni hacer push |
 | `--version` | `-v` | Muestra la versión de VIT |
@@ -87,6 +88,7 @@ Cada argumento saltará únicamente el prompt correspondiente; el resto del fluj
 | `vit release --bump patch --message "fix"` | Menú + bump + mensaje | Changelog, confirmación |
 | `vit release --bump patch --yes` | Todo (headless completo) | Nada |
 | `vit commit --yes` | Todo (usa mensaje por defecto) | Nada |
+| `vit changelog --semantic --yes` | Todo (usa commits de cada tag para regenerar todo el changelog) | Nada |
 | `vit rollback --tag v1.2.3` | Menú + selector de tag | Confirmación |
 | `vit rollback --tag v1.2.3 --yes` | Todo (headless completo) | Nada |
 
@@ -399,6 +401,8 @@ Permite pedir valores sensibles (contraseñas, OTPs) justo antes de ejecutar la 
 Usa `"validate": "otp"` para validar que el valor sea un código de 6 dígitos.
 
 ---
+
+> **Nota:** promptEnv tiene prioridad máxima en VIT. Esto significa que, aunque ejecutemos vit en modo headless, el proceso parará hasta que reciba input del usuario.
 
 ## Variables de entorno y `envFile`
 
