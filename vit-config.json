@@ -23,6 +23,16 @@
       "tagPrefix": "v"
     }
   ],
+  "preActions": [
+    {
+      "id": "testing",
+      "label": "Tests execution",
+      "on": ["commit", "release"],
+      "continueOnError": false,
+      "showOutput": true,
+      "command": "npm run test"
+    }
+  ],
   "postActions": [
     {
       "id": "release-summary",
