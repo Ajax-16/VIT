@@ -1,143 +1,146 @@
 # Changelog
 
-## [0.0.18] - 27/04/2026
+## [v-0.0.18] - 27/04/2026
+
+### 🐛 Bug fixes
+
+- Translated rollback error message on none adapter to english | v-0.0.18
+
+
+## [v-0.0.17] - 27/04/2026
+
+### 📚 Documentation
+
+- document releaseBranches and strict git config
+
+- add CLI arguments section
+
+
+## [v-0.0.16] - 26/04/2026
 
 ### 🚀 Features
 
-- wire buildSemanticChangelog into index.js changelog flow
+- headless execution | v-0.0.16
 
-- add semantic changelog support based on conventional commits
+- headless execution
 
-
-### 🚜 Refactoring
-
-- semantic changelog as a structural mode, not a menu option
-
-
-
-## [0.0.19] - 27/04/2026
-
-### 🚀 Features
-
-- wire buildSemanticChangelog into index.js changelog flow
-
-- add semantic changelog support based on conventional commits
-
-
-
-# Changelog
-
-## [0.0.14] - 26/04/2026
-
-### 🚀 Features
-
-- New simulation system. Mark it to execute your pre actions and be sure of what you are going to do.
+- *(cli)* add CLI argument parser and headless execution mode
 
 
 ### 🐛 Bug fixes
 
-- Fixed a merge error
+- *(cli)* use default commit message when --yes is set without --message
+
+- *(cli)* skip menu and answered prompts when args provided without --yes
 
 
-
-## [0.0.13] - 26/04/2026
-
-### 🚀 Features
-
-- refactor para fixes varios
-
-
-
-# Changelog
-
-## [0.0.10] - 26/04/2026
+## [v-0.0.15] - 26/04/2026
 
 ### 🚀 Features
 
-- Now you can enter a .env file globally or in a given action to use it.
+- *(dry-run)* add --dry-run mode, remove simulate
 
-# Changelog
 
-## [0.0.9] - 26/04/2026
-
-### 🚀 Features
-
-- Added new error control with reduced data on screen and a tmp log that generates with all the stack trace.
-
-## [0.0.7] - 26/04/2026
+## [v-0.0.14] - 26/04/2026
 
 ### 🚀 Features
 
-- Added version display on entry
+- *(branch-guard)* releaseBranches config with warn and strict modes
 
-# Changelog
+- *(simulate)* preflight simulation mode configurable from vit-config
 
-## [0.0.5] - 26/04/2026
 
-### 🚀 Features
-
-- preActions and postActions and pipelines added
-
-# Registro de cambios
-
-# Registro de cambios
-
-## [0.0.4] - 26/04/2026
-
-### 🚀 Features
-
-- New postActions feature! Run any script or apps in specific vit actions
-
-# Changelog
-
-## [0.0.3] - 26/04/2026
-
-### 🎨 Styles
-
-- _(Language)_ CLI language changed to English for broader accessibility.
-
-## [0.0.2] - 25/04/2026
+## [v-0.0.13] - 26/04/2026
 
 ### 🐛 Bug fixes
 
-- Updated README.md
+- *(actions)* enrich thrown errors with action context (id, label, section)
 
-## [0.0.1] - 25/04/2026
+- *(actions)* pass parentCwd to pipeline steps; warn on actions missing command
 
-> First public release of VIT - Version It! A smart CLI for npm project versioning.
+- *(pipeline)* pipeline steps inherit parent action cwd
+
+
+## [v-0.0.12] - 26/04/2026
+
+### 📚 Documentation
+
+- add envFile support to README
+
+
+## [v-0.0.11] - 26/04/2026
+
+> *No conventional commits found for this release.*
+
+
+## [v-0.0.10] - 26/04/2026
+
+### 📚 Documentation
+
+- expand README with advanced pipeline examples and actions vs pipeline comparison
+
+- complete README documentation
+
+
+## [v-0.0.9] - 26/04/2026
+
+> *No conventional commits found for this release.*
+
+
+## [v-0.0.8] - 26/04/2026
+
+### 🐛 Bug fixes
+
+- clean error output with log file
+
+
+## [v-0.0.7] - 26/04/2026
+
+> *No conventional commits found for this release.*
+
+
+## [v-0.0.6] - 26/04/2026
 
 ### 🚀 Features
 
-- npm versioning system with `patch`, `minor` and `major` bumps
+- add preActions, postActions pipeline with captureAs support
 
-- Configuration via `vit-config.json`
 
-- Support for one or multiple configurable projects
+### 📚 Documentation
 
-- Interactive changelog generation and editing
+- update changelog
 
-- Configurable tag system per project via `tagPrefix`
 
-- Configurable VCS integration
+## [core-0.0.5] - 26/04/2026
 
-- Support for `git` and `none` mode without a repository
+> *No conventional commits found for this release.*
 
-- Automatic commit, tag and push when the VCS provider allows it
 
-- CLI rollback to tags when the VCS provider supports it
+## [core-0.0.4] - 26/04/2026
 
-### ⚡ Performance
+### 🚀 Features
 
-- Uses native `child_process` to run versioning and VCS operations
+- postActions | core-0.0.4
 
-- Simple and direct project resolution from `process.cwd()`
+- postActions | core-0.0.5
 
-### 🎨 Styles
+- postActions | core-0.0.4
 
-- Colored CLI interface with `chalk`
 
-- Status spinners with `ora`
+## [core-0.0.3] - 26/04/2026
 
-- Interactive prompts with `inquirer`
+### 🚀 Features
 
-- Clear summaries before executing operations
+- Idioma cambiado a inglés | core-0.0.3
+
+
+## [core-0.0.2] - 25/04/2026
+
+> *No conventional commits found for this release.*
+
+
+## [core-0.0.1] - 25/04/2026
+
+> *No conventional commits found for this release.*
+
+
