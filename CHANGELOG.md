@@ -68,11 +68,6 @@
 - add envFile support to README
 
 
-## [v-0.0.11] - 26/04/2026
-
-> *No conventional commits found for this release.*
-
-
 ## [v-0.0.10] - 26/04/2026
 
 ### 📚 Documentation
@@ -82,21 +77,11 @@
 - complete README documentation
 
 
-## [v-0.0.9] - 26/04/2026
-
-> *No conventional commits found for this release.*
-
-
 ## [v-0.0.8] - 26/04/2026
 
 ### 🐛 Bug fixes
 
 - clean error output with log file
-
-
-## [v-0.0.7] - 26/04/2026
-
-> *No conventional commits found for this release.*
 
 
 ## [v-0.0.6] - 26/04/2026
@@ -109,11 +94,6 @@
 ### 📚 Documentation
 
 - update changelog
-
-
-## [core-0.0.5] - 26/04/2026
-
-> *No conventional commits found for this release.*
 
 
 ## [core-0.0.4] - 26/04/2026
@@ -132,15 +112,5 @@
 ### 🚀 Features
 
 - Idioma cambiado a inglés | core-0.0.3
-
-
-## [core-0.0.2] - 25/04/2026
-
-> *No conventional commits found for this release.*
-
-
-## [core-0.0.1] - 25/04/2026
-
-> *No conventional commits found for this release.*
 
 
