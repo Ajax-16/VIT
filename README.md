@@ -541,28 +541,6 @@ Esta es la distinción más importante a la hora de diseñar tu configuración.
 
 ## Ejemplos avanzados
 
-### Bloquear release si la rama no es `main`
-
-Captura el branch actual y aborta si no es el correcto, sin depender de lógica externa al proyecto.
-
-```json
-{
-  "id": "check-branch",
-  "label": "Verificar rama",
-  "on": ["release"],
-  "showOutput": false,
-  "pipeline": [
-    {
-      "command": "git rev-parse --abbrev-ref HEAD",
-      "captureAs": "GIT_BRANCH"
-    }
-  ],
-  "command": "node -e \"if ('${GIT_BRANCH}' !== 'main') { console.error('ERROR: Solo se puede hacer release desde main (rama actual: ${GIT_BRANCH})'); process.exit(1); }\""
-}
-```
-
----
-
 ### Build de Docker con tag de versión automático
 
 Captura la versión del `package.json` en tiempo de ejecución para etiquetar la imagen Docker correctamente.
