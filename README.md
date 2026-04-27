@@ -625,33 +625,6 @@ SERVER_HOST=produccion.miservidor.com
 
 ---
 
-### Generar release notes automáticas desde los commits
-
-Captura el último tag git y genera un archivo con todos los commits desde ese tag hasta HEAD.
-
-```json
-{
-  "id": "release-notes",
-  "label": "Generar release notes",
-  "on": ["release"],
-  "showOutput": false,
-  "pipeline": [
-    {
-      "command": "git describe --tags --abbrev=0 HEAD~1",
-      "captureAs": "LAST_TAG",
-      "continueOnError": true
-    },
-    {
-      "command": "node -e \"process.stdout.write(require('./package.json').version)\"",
-      "captureAs": "VERSION"
-    }
-  ],
-  "command": "git log ${LAST_TAG}..HEAD --pretty=format:\"- %s (%an)\" > ./releases/notes-v${VERSION}.md"
-}
-```
-
----
-
 ### Publicar en npm solo si la versión no existe ya
 
 Verifica si la versión ya está publicada antes de hacer `npm publish`, evitando errores en pipelines de CI.
@@ -724,22 +697,16 @@ Ejemplo de configuración completa para un monorepo con backend y frontend.
 
 ```json
 {
+  "git": {
+    "strict": true,
+    "releaseBranches": ["main"]
+  },
   "envFile": ".env",
   "projects": [
     { "id": "backend",  "label": "Backend",  "path": "./Backend",  "tagPrefix": "vback" },
     { "id": "frontend", "label": "Frontend", "path": "./Frontend", "tagPrefix": "vfront" }
   ],
   "preActions": [
-    {
-      "id": "check-branch",
-      "label": "Verificar rama",
-      "on": ["release"],
-      "showOutput": false,
-      "pipeline": [
-        { "command": "git rev-parse --abbrev-ref HEAD", "captureAs": "BRANCH" }
-      ],
-      "command": "node -e \"if ('${BRANCH}' !== 'main') { console.error('Solo desde main'); process.exit(1); }\""
-    },
     {
       "id": "test-backend",
       "label": "Tests del Backend",
