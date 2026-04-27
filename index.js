@@ -9,10 +9,7 @@ import inquirer from "inquirer";
 import chalk from "chalk";
 import ora from "ora";
 import { bump, getNextVersion } from "./lib/bump.js";
-import {
-  runChangelog,
-  editChangelog,
-} from "./lib/changelog.js";
+import { runChangelog, editChangelog } from "./lib/changelog.js";
 import { loadVitConfig, checkReleaseBranch } from "./lib/config.js";
 import { getVcsAdapter, vcsLabel } from "./lib/vcs/index.js";
 import { printPostActionsSummary, runPostActions } from "./lib/post-actions.js";
@@ -76,7 +73,8 @@ function printError(err) {
 // ── Boot banner ───────────────────────────────────────────────────────────────────
 const config = loadVitConfig();
 const vcs = getVcsAdapter(config.vcs?.provider ?? "git");
-const semanticChangelog = config.changelog?.semantic === true;
+const semanticChangelog =
+  config.changelog?.semantic === true || cli.semantic === true;
 const rollbackStrategy = config.git?.rollbackStrategy ?? "revert";
 
 console.log(
@@ -599,6 +597,7 @@ if (accion === "release" || accion === "changelog") {
     const result = await runChangelog(config, {
       headless: cli.headless,
       pendingTag,
+      semanticChangelog: cli.semantic,
     });
     if (result?.saved) changelogDone = true;
   }
