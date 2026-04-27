@@ -1,14 +1,14 @@
 # VIT — Version It!
 
-Herramienta de CLI interactiva para gestionar versiones, changelogs y commits en proyectos mono o multi-repositorio.
+Interactive CLI tool to manage versions, changelogs and commits in single or multi-project repositories.
 
-## Instalación
+## Installation
 
 ```bash
 npm install -g @ajax-16/vit
 ```
 
-Verifica la instalación:
+Verify the installation:
 
 ```bash
 vit
@@ -16,9 +16,9 @@ vit
 
 ---
 
-## Uso
+## Usage
 
-Ejecuta `vit` en la raíz de tu proyecto. VIT buscará un archivo `vit-config.json` en el directorio actual. Si no existe, usará la configuración por defecto.
+Run `vit` at the root of your project. VIT will look for a `vit-config.json` file in the current directory. If it doesn't exist, it will use the default configuration.
 
 ```
   VIT   Version It!  v1.0.0
@@ -35,101 +35,101 @@ Ejecuta `vit` en la raíz de tu proyecto. VIT buscará un archivo `vit-config.js
   ❌  Exit
 ```
 
-### Acciones disponibles
+### Available actions
 
-| Acción | Descripción |
+| Action | Description |
 |---|---|
-| **Version it!** | Bump de versión + changelog + commit + tag + push |
-| **Changelog** | Añadir o editar entradas del changelog sin bump |
-| **Commit** | Commit y push sin modificar versiones |
-| **Rollback** | Revertir el repositorio a un tag anterior |
+| **Version it!** | Version bump + changelog + commit + tag + push |
+| **Changelog** | Add or edit changelog entries without bumping |
+| **Commit** | Commit and push without modifying versions |
+| **Rollback** | Revert the repository to a previous tag |
 
 ---
 
-## Argumentos CLI
+## CLI Arguments
 
-Puedes pasar argumentos directamente al ejecutar `vit` para saltarte pasos del flujo interactivo. Los prompts que ya tienen valor por argumento se omiten; el resto se siguen mostrando normalmente.
+You can pass arguments directly when running `vit` to skip steps in the interactive flow. Prompts that already have a value from an argument are skipped; the rest continue normally.
 
 ```bash
-vit [comando] [opciones]
+vit [command] [options]
 ```
 
-### Comandos
+### Commands
 
-| Comando | Descripción |
+| Command | Description |
 |---|---|
-| `release` | Ejecuta el flujo de release |
-| `commit` | Ejecuta un commit sin bump |
-| `changelog` | Abre el flujo de changelog |
-| `rollback` | Revierte a un tag anterior |
+| `release` | Run the release flow |
+| `commit` | Run a commit without bumping |
+| `changelog` | Open the changelog flow |
+| `rollback` | Revert to a previous tag |
 
-### Opciones
+### Options
 
-| Opción | Alias | Descripción |
+| Option | Alias | Description |
 |---|---|---|
-| `--bump <type>` | `-b` | Tipo de bump: `patch`, `minor` o `major` |
-| `--message <msg>` | `-m` | Mensaje del commit |
-| `--tag <tag>` | `-t` | Tag destino para rollback |
-| `--projects <ids>` | `-p` | IDs de proyectos separados por comas (monorepo) |
-| `--semantic` | `-s` | Activa modo de changelog semántico |
-| `--yes` | `-y` | Confirma todo automáticamente sin prompts (modo headless) |
-| `--dry-run` | `-d` | Simula la operación sin escribir ni hacer push |
-| `--version` | `-v` | Muestra la versión de VIT |
-| `--help` | `-h` | Muestra la ayuda |
+| `--bump <type>` | `-b` | Bump type: `patch`, `minor` or `major` |
+| `--message <msg>` | `-m` | Commit message |
+| `--tag <tag>` | `-t` | Target tag for rollback |
+| `--projects <ids>` | `-p` | Comma-separated project IDs (monorepo) |
+| `--semantic` | `-s` | Enable semantic changelog mode |
+| `--yes` | `-y` | Confirm everything automatically without prompts (headless mode) |
+| `--dry-run` | `-d` | Simulate the operation without writing or pushing |
+| `--version` | `-v` | Show VIT version |
+| `--help` | `-h` | Show help |
 
-### Comportamiento por niveles
+### Behavior by level
 
-Cada argumento saltará únicamente el prompt correspondiente; el resto del flujo interactivo continúa con normalidad.
+Each argument skips only its corresponding prompt; the rest of the interactive flow continues normally.
 
-| Comando | Qué se salta | Qué sigue preguntando |
+| Command | What is skipped | What is still asked |
 |---|---|---|
-| `vit release` | Menú principal | Bump type, changelog, mensaje, confirmación |
-| `vit release --bump patch` | Menú + bump type | Changelog, mensaje, confirmación |
-| `vit release --bump patch --message "fix"` | Menú + bump + mensaje | Changelog, confirmación |
-| `vit release --bump patch --yes` | Todo (headless completo) | Nada |
-| `vit commit --yes` | Todo (usa mensaje por defecto) | Nada |
-| `vit changelog --semantic --yes` | Todo (usa commits de cada tag para regenerar todo el changelog) | Nada |
-| `vit rollback --tag v1.2.3` | Menú + selector de tag | Confirmación |
-| `vit rollback --tag v1.2.3 --yes` | Todo (headless completo) | Nada |
+| `vit release` | Main menu | Bump type, changelog, message, confirmation |
+| `vit release --bump patch` | Menu + bump type | Changelog, message, confirmation |
+| `vit release --bump patch --message "fix"` | Menu + bump + message | Changelog, confirmation |
+| `vit release --bump patch --yes` | Everything (full headless) | Nothing |
+| `vit commit --yes` | Everything (uses default message) | Nothing |
+| `vit changelog --semantic --yes` | Everything (uses commits per tag to regenerate full changelog) | Nothing |
+| `vit rollback --tag v1.2.3` | Menu + tag selector | Confirmation |
+| `vit rollback --tag v1.2.3 --yes` | Everything (full headless) | Nothing |
 
-> **Nota:** `--yes` solo activa el modo headless completo si se combina con un comando. Sin `--yes`, cada argumento saltará su prompt correspondiente pero el resto del flujo seguirá siendo interactivo.
+> **Note:** `--yes` only activates full headless mode when combined with a command. Without `--yes`, each argument skips its own prompt but the rest of the flow remains interactive.
 
-### Ejemplos
+### Examples
 
 ```bash
-# Release interactivo desde el menú
+# Interactive release from the menu
 vit
 
-# Release saltando el menú, pregunta el resto
+# Release skipping the menu, asks the rest
 vit release
 
-# Release con bump fijado, sigue preguntando changelog y confirmación
+# Release with fixed bump, still asks for changelog and confirmation
 vit release --bump minor
 
-# Release completamente automático (headless)
+# Fully automated release (headless)
 vit release --bump patch --yes
 
-# Commit automático con mensaje por defecto
+# Automated commit with default message
 vit commit --yes
 
-# Commit automático con mensaje personalizado
+# Automated commit with custom message
 vit commit --message "fix: typo" --yes
 
-# Rollback a un tag concreto sin confirmar
+# Rollback to a specific tag without confirmation
 vit rollback --tag v1.2.3 --yes
 
-# Simular un release sin escribir nada
+# Simulate a release without writing anything
 vit release --bump patch --dry-run
 
-# Release en monorepo solo para el backend
+# Release in monorepo for backend only
 vit release --bump patch --projects backend --yes
 ```
 
 ---
 
-## Configuración — `vit-config.json`
+## Configuration — `vit-config.json`
 
-Crea un archivo `vit-config.json` en la raíz de tu proyecto:
+Create a `vit-config.json` file at the root of your project:
 
 ```json
 {
@@ -162,33 +162,33 @@ Crea un archivo `vit-config.json` en la raíz de tu proyecto:
 
 ### `changelog`
 
-| Campo | Tipo | Default | Descripción |
+| Field | Type | Default | Description |
 |---|---|---|---|
-| `path` | `string` | `./CHANGELOG.md` | Ruta al archivo de changelog |
-| `title` | `string` | `Changelog` | Título del changelog |
-| `semantic` | `boolean` | `false` | Si `true`, el changelog se genera automáticamente a partir de los commits usando [Conventional Commits](https://www.conventionalcommits.org/) |
+| `path` | `string` | `./CHANGELOG.md` | Path to the changelog file |
+| `title` | `string` | `Changelog` | Changelog title |
+| `semantic` | `boolean` | `false` | If `true`, the changelog is automatically generated from commits using [Conventional Commits](https://www.conventionalcommits.org/) |
 
-#### Changelog semántico
+#### Semantic changelog
 
-Cuando `semantic: true`, VIT analiza el historial de commits desde el último tag y genera el changelog automáticamente agrupando los commits por tipo (`feat`, `fix`, `refactor`…). El formato esperado en los mensajes de commit es:
-
-```
-<tipo>(<scope opcional>): <descripción>
-```
-
-Ejemplos válidos:
+When `semantic: true`, VIT analyzes the commit history since the last tag and automatically generates the changelog by grouping commits by type (`feat`, `fix`, `refactor`…). The expected commit message format is:
 
 ```
-feat: nueva pantalla de login
-fix(api): corregir timeout en peticiones lentas
-refactor(auth): extraer lógica de validación
+<type>(<optional scope>): <description>
 ```
 
-Los commits que no sigan este formato son ignorados automáticamente.
+Valid examples:
 
-**Flujo interactivo** — VIT muestra los commits detectados, permite deseleccionar los que no quieras incluir y solicita opcionalmente un texto introductorio antes de guardar.
+```
+feat: new login screen
+fix(api): correct timeout on slow requests
+refactor(auth): extract validation logic
+```
 
-**Modo headless** — el changelog se regenera silenciosamente sin prompts.
+Commits that don't follow this format are automatically ignored.
+
+**Interactive flow** — VIT shows the detected commits, lets you deselect the ones you don't want to include, and optionally asks for an introductory text before saving.
+
+**Headless mode** — the changelog is silently regenerated without prompts.
 
 ```json
 "changelog": {
@@ -200,22 +200,22 @@ Los commits que no sigan este formato son ignorados automáticamente.
 
 ### `git`
 
-| Campo | Tipo | Default | Descripción |
+| Field | Type | Default | Description |
 |---|---|---|---|
-| `defaultCommitMessage` | `string` | `chore: update` | Mensaje por defecto para commits sin bump |
-| `releaseCommitMessage` | `string` | `chore: version bump` | Mensaje por defecto para releases |
-| `changelogCommitMessage` | `string` | `docs: update changelog` | Mensaje por defecto para commits de changelog |
-| `releaseBranches` | `string[]` | `[]` | Ramas desde las que se permite hacer release |
-| `strict` | `boolean` | `false` | Si `true`, bloquea el release al detectar una rama no permitida |
-| `rollbackStrategy` | `string` | `"revert"` | Estrategia de rollback: `"revert"` (por defecto) o `"reset"` |
+| `defaultCommitMessage` | `string` | `chore: update` | Default message for commits without bump |
+| `releaseCommitMessage` | `string` | `chore: version bump` | Default message for release commits |
+| `changelogCommitMessage` | `string` | `docs: update changelog` | Default message for changelog commits |
+| `releaseBranches` | `string[]` | `[]` | Branches from which releases are allowed |
+| `strict` | `boolean` | `false` | If `true`, blocks the release when on a non-allowed branch |
+| `rollbackStrategy` | `string` | `"revert"` | Rollback strategy: `"revert"` (default) or `"reset"` |
 
-#### Control de ramas para releases
+#### Branch control for releases
 
-Puedes restringir desde qué ramas se puede ejecutar un release mediante `releaseBranches` y `strict`.
+You can restrict which branches can run a release using `releaseBranches` and `strict`.
 
-**Modo advertencia** (`strict: false`, por defecto)
+**Warning mode** (`strict: false`, default)
 
-Si estás en una rama no permitida, VIT muestra un aviso y pregunta si quieres continuar de todas formas:
+If you are on a non-allowed branch, VIT shows a warning and asks if you want to continue anyway:
 
 ```
   WARNING   You are on branch "feat/my-feature", not on a release branch.
@@ -224,20 +224,20 @@ Si estás en una rama no permitida, VIT muestra un aviso y pregunta si quieres c
 ? Continue anyway? (y/N)
 ```
 
-Con `--yes` o en modo headless se acepta automáticamente el aviso y el release continúa.
+With `--yes` or in headless mode, the warning is automatically accepted and the release continues.
 
-**Modo estricto** (`strict: true`)
+**Strict mode** (`strict: true`)
 
-Si estás en una rama no permitida, el release queda bloqueado y VIT termina con error:
+If you are on a non-allowed branch, the release is blocked and VIT exits with an error:
 
 ```
   BLOCKED   Releases are not allowed from branch "feat/my-feature".
   Allowed branches: main
 ```
 
-En modo `--dry-run`, el bloqueo estricto se ignora para permitir simulaciones desde cualquier rama.
+In `--dry-run` mode, strict blocking is ignored to allow simulations from any branch.
 
-**Ejemplo con múltiples ramas permitidas:**
+**Example with multiple allowed branches:**
 
 ```json
 "git": {
@@ -246,26 +246,26 @@ En modo `--dry-run`, el bloqueo estricto se ignora para permitir simulaciones de
 }
 ```
 
-#### Estrategia de rollback
+#### Rollback strategy
 
-`rollbackStrategy` controla cómo VIT deshace los cambios al hacer un rollback a un tag anterior.
+`rollbackStrategy` controls how VIT undoes changes when rolling back to a previous tag.
 
-Antes de ejecutar cualquier acción, VIT muestra siempre un **preview de los commits afectados** junto con la estrategia activa:
+Before executing any action, VIT always shows a **preview of the affected commits** along with the active strategy:
 
 ```
   Commits that will be rolled back:  (strategy: revert)
   ─────────────────────────────────────────────────────
-  · feat: nueva pantalla de login
-  · fix: corregir bug en el formulario
+  · feat: new login screen
+  · fix: fix bug in the form
   · chore: release v1.1.0
 
   Strategy  : revert — creates a new commit, history preserved
   Target tag: v1.0.0 (3 commit(s) affected)
 ```
 
-**`"revert"` (por defecto)** — crea un nuevo commit que deshace los cambios. La historia de git se mantiene intacta y se puede hacer push normal sin `--force`. Recomendado para repos compartidos con otros colaboradores.
+**`"revert"` (default)** — creates a new commit that undoes the changes. The git history remains intact and a normal push without `--force` is possible. Recommended for shared repos with other collaborators.
 
-**`"reset"`** — mueve el puntero HEAD al tag destino, reescribiendo la historia. Requiere force push (`git push --force`). Usar solo en repos personales o ramas propias.
+**`"reset"`** — moves the HEAD pointer to the target tag, rewriting history. Requires force push (`git push --force`). Use only on personal repos or your own branches.
 
 ```json
 "git": {
@@ -273,26 +273,26 @@ Antes de ejecutar cualquier acción, VIT muestra siempre un **preview de los com
 }
 ```
 
-> **Nota:** Con la estrategia `reset`, VIT también ofrece eliminar los tags que quedaron por encima del tag destino, ya que apuntarían a commits que ya no existen en la historia local.
+> **Note:** With the `reset` strategy, VIT also offers to delete the tags that were above the target tag, since they would point to commits that no longer exist in the local history.
 
 ### `vcs`
 
-| Campo | Tipo | Default | Descripción |
+| Field | Type | Default | Description |
 |---|---|---|---|
-| `provider` | `string` | `git` | Proveedor VCS. Actualmente soportado: `git` |
+| `provider` | `string` | `git` | VCS provider. Currently supported: `git` |
 
 ### `projects`
 
-Array de proyectos a gestionar. Útil para monorepos.
+Array of projects to manage. Useful for monorepos.
 
-| Campo | Tipo | Descripción |
+| Field | Type | Description |
 |---|---|---|
-| `id` | `string` | Identificador único del proyecto |
-| `label` | `string` | Nombre legible del proyecto |
-| `path` | `string` | Ruta relativa al directorio del proyecto |
-| `tagPrefix` | `string` | Prefijo para los tags git (`v` → `v1.2.3`, `vback` → `vback1.2.3`) |
+| `id` | `string` | Unique project identifier |
+| `label` | `string` | Human-readable project name |
+| `path` | `string` | Relative path to the project directory |
+| `tagPrefix` | `string` | Prefix for git tags (`v` → `v1.2.3`, `vback` → `vback1.2.3`) |
 
-**Ejemplo monorepo:**
+**Monorepo example:**
 
 ```json
 "projects": [
@@ -301,24 +301,24 @@ Array de proyectos a gestionar. Útil para monorepos.
 ]
 ```
 
-### `types` (opcional)
+### `types` (optional)
 
-Personaliza los tipos de commit disponibles en el changelog. Se fusionan con los tipos por defecto.
+Customize the commit types available in the changelog. They are merged with the default types.
 
 ```json
 "types": [
-  { "value": "feat",   "label": "🚀 Funcionalidades", "choiceLabel": "🚀 feat     — Nueva funcionalidad" },
-  { "value": "fix",    "label": "🐛 Correcciones",    "choiceLabel": "🐛 fix      — Corrección de bug" },
-  { "value": "chore",  "label": "🔧 Mantenimiento",   "choiceLabel": "🔧 chore    — Mantenimiento" },
-  { "value": "deploy", "label": "🌍 Despliegue",      "choiceLabel": "🌍 deploy   — Despliegue / infra" }
+  { "value": "feat",   "label": "🚀 Features",     "choiceLabel": "🚀 feat     — New feature" },
+  { "value": "fix",    "label": "🐛 Bug Fixes",     "choiceLabel": "🐛 fix      — Bug fix" },
+  { "value": "chore",  "label": "🔧 Maintenance",   "choiceLabel": "🔧 chore    — Maintenance" },
+  { "value": "deploy", "label": "🌍 Deployment",    "choiceLabel": "🌍 deploy   — Deployment / infra" }
 ]
 ```
 
-Tipos incluidos por defecto: `feat`, `fix`, `refactor`, `perf`, `revert`, `docs`, `style`.
+Default types included: `feat`, `fix`, `refactor`, `perf`, `revert`, `docs`, `style`.
 
-### `envFile` (opcional)
+### `envFile` (optional)
 
-Ruta a un archivo `.env` global cuyas variables estarán disponibles en **todas** las actions. Las variables del archivo tienen menor prioridad que `env` y `promptEnv` definidos en cada action.
+Path to a global `.env` file whose variables will be available in **all** actions. Variables from the file have lower priority than `env` and `promptEnv` defined in each action.
 
 ```json
 {
@@ -326,13 +326,13 @@ Ruta a un archivo `.env` global cuyas variables estarán disponibles en **todas*
 }
 ```
 
-Ver [Variables de entorno y `envFile`](#variables-de-entorno-y-envfile) para más detalles.
+See [Environment variables and `envFile`](#environment-variables-and-envfile) for more details.
 
 ---
 
-## Pre-actions y Post-actions
+## Pre-actions and Post-actions
 
-VIT permite ejecutar comandos automáticamente antes (`preActions`) y después (`postActions`) de cada operación.
+VIT allows you to run commands automatically before (`preActions`) and after (`postActions`) each operation.
 
 ```json
 {
@@ -341,12 +341,12 @@ VIT permite ejecutar comandos automáticamente antes (`preActions`) y después (
 }
 ```
 
-### Estructura de una action
+### Action structure
 
 ```json
 {
-  "id": "mi-accion",
-  "label": "Descripción visible",
+  "id": "my-action",
+  "label": "Visible description",
   "on": ["release", "commit"],
   "cwd": "./Backend",
   "continueOnError": false,
@@ -357,66 +357,64 @@ VIT permite ejecutar comandos automáticamente antes (`preActions`) y después (
     "NODE_ENV": "production"
   },
   "promptEnv": [
-    { "name": "SSH_PASS", "message": "Contraseña SSH:" }
+    { "name": "SSH_PASS", "message": "SSH password:" }
   ],
   "pipeline": [...],
   "command": "npm test"
 }
 ```
 
-| Campo | Tipo | Default | Descripción |
+| Field | Type | Default | Description |
 |---|---|---|---|
-| `id` | `string` | auto | Identificador único |
-| `label` | `string` | `command` | Texto mostrado en el spinner |
+| `id` | `string` | auto | Unique identifier |
+| `label` | `string` | `command` | Text shown in the spinner |
 | `on` | `string[]` | `["release"]` | Triggers: `release`, `commit`, `changelog` |
-| `cwd` | `string` | `.` | Directorio de trabajo del comando |
-| `continueOnError` | `boolean` | `false` | Si `true`, un error no detiene la ejecución |
-| `showOutput` | `boolean` | `true` | Mostrar stdout/stderr en tiempo real |
-| `timeoutMs` | `number` | `null` | Timeout en ms. `null` = sin límite |
-| `envFile` | `string` | `null` | Ruta a un `.env` específico para esta action (mayor prioridad que el `envFile` global) |
-| `env` | `object` | `{}` | Variables de entorno estáticas (mayor prioridad que `envFile`) |
-| `promptEnv` | `array` | `[]` | Variables que se piden interactivamente al usuario (máxima prioridad) |
-| `pipeline` | `array` | `[]` | Pasos previos que enriquecen el entorno del comando |
-| `command` | `string` | — | Comando principal a ejecutar |
+| `cwd` | `string` | `.` | Working directory for the command |
+| `continueOnError` | `boolean` | `false` | If `true`, an error doesn't stop execution |
+| `showOutput` | `boolean` | `true` | Show stdout/stderr in real time |
+| `timeoutMs` | `number` | `null` | Timeout in ms. `null` = no limit |
+| `envFile` | `string` | `null` | Path to a `.env` specific to this action (higher priority than global `envFile`) |
+| `env` | `object` | `{}` | Static environment variables (higher priority than `envFile`) |
+| `promptEnv` | `array` | `[]` | Variables asked interactively to the user (highest priority) |
+| `pipeline` | `array` | `[]` | Previous steps that enrich the command's environment |
+| `command` | `string` | — | Main command to execute |
 
-### Triggers disponibles
+### Available triggers
 
-| Trigger | Cuándo se ejecuta |
+| Trigger | When it runs |
 |---|---|
-| `release` | Al hacer bump de versión |
-| `commit` | Al hacer commit sin bump |
-| `changelog` | Al hacer commit de changelog |
+| `release` | When bumping the version |
+| `commit` | When committing without bump |
+| `changelog` | When committing a changelog |
 
 ### `promptEnv`
 
-Permite pedir valores sensibles (contraseñas, OTPs) justo antes de ejecutar la acción, sin guardarlos en ningún archivo.
+Allows asking for sensitive values (passwords, tokens) right before running the action, without storing them anywhere.
 
 ```json
 "promptEnv": [
-  { "name": "SSH_PASS", "message": "Contraseña SSH del servidor:" },
-  { "name": "OTP_CODE", "message": "Código OTP:", "validate": "otp" }
+  { "name": "SSH_PASS",     "message": "SSH password:" },
+  { "name": "DEPLOY_TOKEN", "message": "Deploy token:" }
 ]
 ```
 
-Usa `"validate": "otp"` para validar que el valor sea un código de 6 dígitos.
-
-> **Nota:** promptEnv tiene prioridad máxima en VIT. Esto significa que, aunque ejecutemos vit en modo headless, el proceso parará hasta que reciba input del usuario.
+> **Note:** `promptEnv` has the highest priority in VIT. This means that even when running VIT in headless mode, the process will stop until it receives user input.
 
 ---
 
-## Variables de entorno y `envFile`
+## Environment variables and `envFile`
 
-VIT soporta cargar variables de entorno desde archivos `.env` en dos niveles: **global** (para todas las actions) y **por action** (solo para esa action). Las variables del nivel más cercano tienen prioridad.
+VIT supports loading environment variables from `.env` files at two levels: **global** (for all actions) and **per action** (only for that action). Variables at the closer level take priority.
 
-### Orden de prioridad (menor → mayor)
+### Priority order (lower → higher)
 
 ```
-process.env  →  envFile global  →  envFile de action  →  action.env  →  promptEnv
+process.env  →  global envFile  →  action envFile  →  action.env  →  promptEnv
 ```
 
-### `envFile` global
+### Global `envFile`
 
-Se define en la raíz del `vit-config.json`. Sus variables están disponibles en todas las actions.
+Defined at the root of `vit-config.json`. Its variables are available in all actions.
 
 ```json
 {
@@ -425,9 +423,9 @@ Se define en la raíz del `vit-config.json`. Sus variables están disponibles en
 }
 ```
 
-### `envFile` por action
+### Per-action `envFile`
 
-Se define dentro de una action concreta. Sobreescribe las variables del `envFile` global con el mismo nombre.
+Defined inside a specific action. Overrides variables from the global `envFile` with the same name.
 
 ```json
 {
@@ -437,7 +435,7 @@ Se define dentro de una action concreta. Sobreescribe las variables del `envFile
 }
 ```
 
-### Ejemplo completo
+### Full example
 
 **`vit-config.json`:**
 ```json
@@ -446,36 +444,36 @@ Se define dentro de una action concreta. Sobreescribe las variables del `envFile
   "postActions": [
     {
       "id": "deploy",
-      "label": "Deploy a producción",
+      "label": "Deploy to production",
       "on": ["release"],
       "envFile": ".env.production",
-      "command": "echo Desplegando como ${DEPLOY_USER} en ${APP_ENV}"
+      "command": "echo Deploying as ${DEPLOY_USER} in ${APP_ENV}"
     }
   ]
 }
 ```
 
-**`.env`** (disponible para todas las actions):
+**`.env`** (available for all actions):
 ```env
 APP_ENV=development
 DEPLOY_USER=dev
 ```
 
-**`.env.production`** (solo para la action `deploy`, sobreescribe `.env`):
+**`.env.production`** (only for the `deploy` action, overrides `.env`):
 ```env
 APP_ENV=production
 DEPLOY_USER=deploy-bot
 ```
 
-En la action `deploy`, `APP_ENV` será `production` y `DEPLOY_USER` será `deploy-bot` porque `.env.production` tiene prioridad sobre `.env`.
+In the `deploy` action, `APP_ENV` will be `production` and `DEPLOY_USER` will be `deploy-bot` because `.env.production` has priority over `.env`.
 
-> **Nota:** Los archivos `.env` se parsean internamente sin necesidad de instalar `dotenv`. Se soportan comentarios (`# comentario`), líneas vacías y valores con comillas simples o dobles.
+> **Note:** `.env` files are parsed internally without needing to install `dotenv`. Comments (`# comment`), blank lines and values with single or double quotes are supported.
 
 ---
 
-## Pipeline de pasos
+## Step pipeline
 
-El `pipeline` de una action es una lista de comandos que se ejecutan **antes** del `command` principal. Cada paso puede capturar su stdout como variable de entorno disponible para los pasos siguientes y para el `command` final mediante interpolación `${VAR}`.
+The `pipeline` of an action is a list of commands that run **before** the main `command`. Each step can capture its stdout as an environment variable available to subsequent steps and to the final `command` via `${VAR}` interpolation.
 
 ```json
 "pipeline": [
@@ -490,60 +488,60 @@ El `pipeline` de una action es una lista de comandos que se ejecutan **antes** d
     "captureAs": "GIT_BRANCH"
   }
 ],
-"command": "node -e \"console.log('Node: ${NODE_VERSION} — Rama: ${GIT_BRANCH}')\""
+"command": "node -e \"console.log('Node: ${NODE_VERSION} — Branch: ${GIT_BRANCH}')\""
 ```
 
-### Campos de un paso de pipeline
+### Pipeline step fields
 
-| Campo | Tipo | Default | Descripción |
+| Field | Type | Default | Description |
 |---|---|---|---|
-| `id` | `string` | auto | Identificador único |
-| `label` | `string` | `command` | Texto mostrado en el spinner |
-| `command` | `string` | — | Comando a ejecutar |
-| `captureAs` | `string` | `null` | Variable donde guardar el stdout |
-| `cwd` | `string` | `process.cwd()` | Directorio de trabajo |
-| `continueOnError` | `boolean` | `false` | Si `true`, un error no detiene el pipeline |
-| `showOutput` | `boolean` | `false` | Mostrar stdout (normalmente innecesario en pipeline steps) |
-| `timeoutMs` | `number` | `null` | Timeout en ms |
+| `id` | `string` | auto | Unique identifier |
+| `label` | `string` | `command` | Text shown in the spinner |
+| `command` | `string` | — | Command to execute |
+| `captureAs` | `string` | `null` | Variable to store stdout in |
+| `cwd` | `string` | `process.cwd()` | Working directory |
+| `continueOnError` | `boolean` | `false` | If `true`, an error doesn't stop the pipeline |
+| `showOutput` | `boolean` | `false` | Show stdout (usually unnecessary in pipeline steps) |
+| `timeoutMs` | `number` | `null` | Timeout in ms |
 
-> **Nota:** Los pasos del pipeline tienen `showOutput: false` por defecto porque su propósito es capturar valores. El `command` principal de la action tiene `showOutput: true` por defecto.
+> **Note:** Pipeline steps have `showOutput: false` by default because their purpose is to capture values. The main `command` of the action has `showOutput: true` by default.
 
 ---
 
-## Pipeline vs. múltiples actions
+## Pipeline vs. multiple actions
 
-Esta es la distinción más importante a la hora de diseñar tu configuración.
+This is the most important distinction when designing your configuration.
 
-### Pipeline — pasos dentro de una action
+### Pipeline — steps inside an action
 
-- Todos los pasos **comparten el mismo entorno acumulado**: lo que captura el paso 1 lo puede usar el paso 3 y el `command` final.
-- Se ejecutan en serie dentro de la misma action.
-- Su propósito es **preparar datos dinámicos** para construir el comando principal.
-- No tienen `on`, `promptEnv` ni `env` propios — heredan todo de la action padre.
+- All steps **share the same accumulated environment**: what step 1 captures can be used by step 3 and the final `command`.
+- They run in series within the same action.
+- Their purpose is to **prepare dynamic data** to build the main command.
+- They have no `on`, `promptEnv` or `env` of their own — they inherit everything from the parent action.
 
-### Múltiples actions — tareas independientes
+### Multiple actions — independent tasks
 
-- Cada action tiene su propio `on`, `cwd`, `env`, `envFile`, `promptEnv`, `showOutput` y `timeoutMs`.
-- Cada una aparece como un bloque separado con su propio spinner y label en la UI.
-- **No comparten variables** entre sí.
-- Son conceptualmente tareas distintas: tests, build, deploy, notificación...
+- Each action has its own `on`, `cwd`, `env`, `envFile`, `promptEnv`, `showOutput` and `timeoutMs`.
+- Each one appears as a separate block with its own spinner and label in the UI.
+- **They do not share variables** between them.
+- They are conceptually distinct tasks: tests, build, deploy, notification…
 
-### Regla práctica
+### Practical rule
 
-| Situación | Usa |
+| Situation | Use |
 |---|---|
-| Necesito el resultado del paso A para construir el comando B | `pipeline` |
-| Son tareas independientes que podrían ejecutarse por separado | actions separadas |
-| Quiero que cada tarea tenga su propio label y spinner bien visible | actions separadas |
-| Quiero preparar contexto antes de un comando complejo | `pipeline` |
+| I need the result of step A to build command B | `pipeline` |
+| They are independent tasks that could run separately | separate actions |
+| I want each task to have its own clearly visible label and spinner | separate actions |
+| I want to prepare context before a complex command | `pipeline` |
 
 ---
 
-## Ejemplos avanzados
+## Advanced examples
 
-### Build de Docker con tag de versión automático
+### Docker build with automatic version tag
 
-Captura la versión del `package.json` en tiempo de ejecución para etiquetar la imagen Docker correctamente.
+Captures the version from `package.json` at runtime to correctly label the Docker image.
 
 ```json
 {
@@ -567,18 +565,18 @@ Captura la versión del `package.json` en tiempo de ejecución para etiquetar la
 
 ---
 
-### Deploy por SCP con contraseña pedida en tiempo real
+### SCP deploy with password asked at runtime
 
-Combina `pipeline` para construir la ruta de destino y `promptEnv` para pedir la contraseña SSH sin guardarla en ningún sitio.
+Combines `pipeline` to build the destination path and `promptEnv` to ask for the SSH password without storing it anywhere.
 
 ```json
 {
   "id": "deploy-production",
-  "label": "Deploy a producción",
+  "label": "Deploy to production",
   "on": ["release"],
   "showOutput": true,
   "promptEnv": [
-    { "name": "SSH_PASS", "message": "Contraseña SSH del servidor de producción:" }
+    { "name": "SSH_PASS", "message": "Production server SSH password:" }
   ],
   "pipeline": [
     {
@@ -590,20 +588,20 @@ Combina `pipeline` para construir la ruta de destino y `promptEnv` para pedir la
       "captureAs": "DATE"
     }
   ],
-  "command": "sshpass -p ${SSH_PASS} scp -r ./dist user@produccion.miserver.com:/var/www/releases/${VERSION}-${DATE}"
+  "command": "sshpass -p ${SSH_PASS} scp -r ./dist user@myserver.com:/var/www/releases/${VERSION}-${DATE}"
 }
 ```
 
 ---
 
-### Deploy con variables de entorno desde archivo
+### Deploy with environment variables from file
 
-Usa `envFile` por action para cargar credenciales de producción sin exponerlas en el config.
+Uses `envFile` per action to load production credentials without exposing them in the config.
 
 ```json
 {
   "id": "deploy-production",
-  "label": "Deploy a producción",
+  "label": "Deploy to production",
   "on": ["release"],
   "showOutput": true,
   "envFile": ".env.production",
@@ -620,19 +618,19 @@ Usa `envFile` por action para cargar credenciales de producción sin exponerlas 
 **`.env.production`:**
 ```env
 DEPLOY_USER=deploy-bot
-SERVER_HOST=produccion.miservidor.com
+SERVER_HOST=production.myserver.com
 ```
 
 ---
 
-### Publicar en npm solo si la versión no existe ya
+### Publish to npm only if the version doesn't exist yet
 
-Verifica si la versión ya está publicada antes de hacer `npm publish`, evitando errores en pipelines de CI.
+Checks if the version is already published before running `npm publish`, avoiding errors in CI pipelines.
 
 ```json
 {
   "id": "npm-publish",
-  "label": "Publicar en npm",
+  "label": "Publish to npm",
   "on": ["release"],
   "showOutput": true,
   "pipeline": [
@@ -651,25 +649,25 @@ Verifica si la versión ya está publicada antes de hacer `npm publish`, evitand
       "continueOnError": true
     }
   ],
-  "command": "node -e \"if ('${PUBLISHED_VERSION}' === '${VERSION}') { console.log('Versión ${VERSION} ya publicada, saltando.'); process.exit(0); } require('child_process').execSync('npm publish', { stdio: 'inherit' });\""
+  "command": "node -e \"if ('${PUBLISHED_VERSION}' === '${VERSION}') { console.log('Version ${VERSION} already published, skipping.'); process.exit(0); } require('child_process').execSync('npm publish', { stdio: 'inherit' });\""
 }
 ```
 
 ---
 
-### Notificación a Slack al terminar un release
+### Slack notification on release
 
-Envía un mensaje a un canal de Slack con la versión publicada, la rama y la fecha, usando solo `curl`.
+Sends a message to a Slack channel with the published version, branch and date, using only `curl`.
 
 ```json
 {
   "id": "notify-slack",
-  "label": "Notificar Slack",
+  "label": "Notify Slack",
   "on": ["release"],
   "continueOnError": true,
   "showOutput": false,
   "promptEnv": [
-    { "name": "SLACK_WEBHOOK", "message": "Webhook URL de Slack:" }
+    { "name": "SLACK_WEBHOOK", "message": "Slack Webhook URL:" }
   ],
   "pipeline": [
     {
@@ -685,15 +683,15 @@ Envía un mensaje a un canal de Slack con la versión publicada, la rama y la fe
       "captureAs": "DATE"
     }
   ],
-  "command": "curl -s -X POST ${SLACK_WEBHOOK} -H 'Content-type: application/json' --data '{\"text\":\"🚀 *Release v${VERSION}* publicado desde `${BRANCH}` el ${DATE}\"}'"
+  "command": "curl -s -X POST ${SLACK_WEBHOOK} -H 'Content-type: application/json' --data '{\"text\":\"🚀 *Release v${VERSION}* published from `${BRANCH}` on ${DATE}\"}'"
 }
 ```
 
 ---
 
-### Monorepo completo: preflight + tests + build + deploy + resumen
+### Full monorepo: preflight + tests + build + deploy + summary
 
-Ejemplo de configuración completa para un monorepo con backend y frontend.
+Full configuration example for a monorepo with backend and frontend.
 
 ```json
 {
@@ -709,7 +707,7 @@ Ejemplo de configuración completa para un monorepo con backend y frontend.
   "preActions": [
     {
       "id": "test-backend",
-      "label": "Tests del Backend",
+      "label": "Backend tests",
       "on": ["release"],
       "cwd": "./Backend",
       "continueOnError": false,
@@ -718,7 +716,7 @@ Ejemplo de configuración completa para un monorepo con backend y frontend.
     },
     {
       "id": "build-frontend",
-      "label": "Build del Frontend",
+      "label": "Frontend build",
       "on": ["release"],
       "cwd": "./Frontend",
       "continueOnError": false,
@@ -729,12 +727,12 @@ Ejemplo de configuración completa para un monorepo con backend y frontend.
   "postActions": [
     {
       "id": "deploy",
-      "label": "Deploy a producción",
+      "label": "Deploy to production",
       "on": ["release"],
       "showOutput": true,
       "envFile": ".env.production",
       "promptEnv": [
-        { "name": "SSH_PASS", "message": "Contraseña SSH:" },
+        { "name": "SSH_PASS", "message": "SSH password:" }
       ],
       "pipeline": [
         { "command": "node -e \"process.stdout.write(require('./Backend/package.json').version)\"",  "captureAs": "BACK_VERSION" },
@@ -744,7 +742,7 @@ Ejemplo de configuración completa para un monorepo con backend y frontend.
     },
     {
       "id": "summary",
-      "label": "Resumen del release",
+      "label": "Release summary",
       "on": ["release"],
       "continueOnError": true,
       "showOutput": false,
@@ -754,7 +752,7 @@ Ejemplo de configuración completa para un monorepo con backend y frontend.
         { "command": "git rev-parse --abbrev-ref HEAD", "captureAs": "BRANCH" },
         { "command": "node -e \"process.stdout.write(new Date().toISOString().slice(0,16).replace('T',' '))\"", "captureAs": "DATE" }
       ],
-      "command": "node -e \"console.log('\\n  ✅ Release completado\\n  Backend  : v${BACK_VERSION}\\n  Frontend : v${FRONT_VERSION}\\n  Rama     : ${BRANCH}\\n  Fecha    : ${DATE}\\n')\""
+      "command": "node -e \"console.log('\\n  ✅ Release complete\\n  Backend  : v${BACK_VERSION}\\n  Frontend : v${FRONT_VERSION}\\n  Branch   : ${BRANCH}\\n  Date     : ${DATE}\\n')\""
     }
   ]
 }
@@ -762,28 +760,28 @@ Ejemplo de configuración completa para un monorepo con backend y frontend.
 
 ---
 
-## Manejo de errores
+## Error handling
 
-Cuando un comando falla, VIT muestra un mensaje limpio y guarda el stack trace completo en un archivo de log temporal:
+When a command fails, VIT shows a clean message and saves the full stack trace to a temporary log file:
 
 ```
   ERROR   "Tests" failed (exit 1)
 
-  Log guardado en:
+  Log saved to:
   C:\Users\user\AppData\Local\Temp\vit-logs\vit-error-1745678912345.log
 ```
 
-Los logs se guardan en `{tmpdir}/vit-logs/` con el formato `vit-error-{timestamp}.log`.
+Logs are saved in `{tmpdir}/vit-logs/` with the format `vit-error-{timestamp}.log`.
 
 ---
 
-## Requisitos
+## Requirements
 
 - Node.js >= 18
-- Git instalado y configurado
+- Git installed and configured
 
 ---
 
-## Licencia
+## License
 
 MIT
