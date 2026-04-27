@@ -6,8 +6,6 @@
 
 - specified dry-run on changelog summary operation when dry run was not selected
 
-- test
-
 
 ### 📚 Documentation
 
