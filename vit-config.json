@@ -27,7 +27,7 @@
     {
       "id": "preflight",
       "label": "Preflight checks",
-      "on": ["commit", "release"],
+      "on": ["release"],
       "continueOnError": false,
       "showOutput": true,
       "pipeline": [
@@ -59,7 +59,7 @@
     {
       "id": "release-summary",
       "label": "Release summary",
-      "on": ["commit", "release"],
+      "on": ["release"],
       "continueOnError": false,
       "showOutput": true,
       "pipeline": [
