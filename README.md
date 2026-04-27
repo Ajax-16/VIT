@@ -400,9 +400,9 @@ Permite pedir valores sensibles (contraseñas, OTPs) justo antes de ejecutar la 
 
 Usa `"validate": "otp"` para validar que el valor sea un código de 6 dígitos.
 
----
-
 > **Nota:** promptEnv tiene prioridad máxima en VIT. Esto significa que, aunque ejecutemos vit en modo headless, el proceso parará hasta que reciba input del usuario.
+
+---
 
 ## Variables de entorno y `envFile`
 
