@@ -2,13 +2,13 @@
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const { version } = require("./package.json");
-import { writeFileSync, mkdirSync } from "fs";
+import { writeFileSync, mkdirSync, readFileSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { join, resolve } from "path";
 import inquirer from "inquirer";
 import chalk from "chalk";
 import ora from "ora";
-import { bump } from "./lib/bump.js";
+import { bump, getNextVersion } from "./lib/bump.js";
 import {
   buildChangelog,
   buildSemanticChangelog,
@@ -77,7 +77,7 @@ function printError(err) {
 // ── Boot banner ───────────────────────────────────────────────────────────────
 const config = loadVitConfig();
 const vcs = getVcsAdapter(config.vcs?.provider ?? "git");
-const semanticChangelog = config.changelog?.semantic === true;
+const semanticChangelog = config.changelog?.semanticChangelog === true;
 
 console.log(
   "\n" +
@@ -450,6 +450,9 @@ if (accion === "release") {
 //
 // SEMANTIC MODE  (semanticChangelog: true)
 //   Always regenerates the FULL changelog from all git tags.
+//   When called from a release flow, computes the pending tag from the current
+//   version + bump type so that unreleased commits are included even though the
+//   tag does not exist yet in the repository.
 //   Interactive → preview first 80 lines → confirm overwrite.
 //   Headless    → overwrites silently with no prompts.
 //
@@ -460,8 +463,37 @@ if (accion === "release") {
 if (accion === "release" || accion === "changelog") {
   if (semanticChangelog) {
     if (!dryRun) {
+      // ── Compute pending tag for release flow ────────────────────────────
+      // The changelog is built before the bump runs, so the new tag does not
+      // exist yet. We derive it here so the upcoming release section is
+      // included in the generated output.
+      let pendingTag;
+      if (accion === "release" && bumpResult) {
+        try {
+          const selectedProjects = config.projects.filter((p) =>
+            bumpResult.targets.includes(p.id),
+          );
+          // Use the first target project to compute the pending version.
+          // For multi-project monorepos the tag is a joined string; we build
+          // it the same way bump.js does.
+          const pendingVersions = selectedProjects.map((p) => {
+            const pkg = JSON.parse(
+              readFileSync(resolve(p.path, "package.json"), "utf-8"),
+            );
+            const nextVer = getNextVersion(pkg.version, bumpResult.bumpType);
+            return `${p.tagPrefix}-${nextVer}`;
+          });
+          pendingTag = pendingVersions.join("-");
+        } catch {
+          // If we cannot read the version for any reason, fall back to no
+          // pending tag (same behaviour as before this fix).
+          pendingTag = undefined;
+        }
+      }
+
       const result = await buildSemanticChangelog(config, {
         headless: cli.headless,
+        pendingTag,
       });
       changelogDone = result.saved;
     } else {
