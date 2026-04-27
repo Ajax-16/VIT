@@ -585,7 +585,6 @@ console.log(
   }`,
 );
 
-// this is a test
 printPreActionsSummary(config, accion);
 printPostActionsSummary(config, accion);
 console.log();
