@@ -65,8 +65,6 @@ function printError(err) {
 // ── Boot banner ────────────────────────────────────────────────────────────
 const config = loadVitConfig();
 const vcs = getVcsAdapter(config.vcs?.provider ?? "git");
-
-// Resolve whether semantic changelog is active
 const semanticChangelog = config.changelog?.semanticChangelog === true;
 
 console.log(
@@ -87,16 +85,12 @@ const lastTag = vcs.getLastTag();
 console.log(chalk.dim(`  VCS            : `) + chalk.cyan(vcsLabel(config.vcs?.provider)));
 console.log(chalk.dim(`  Current branch : `) + chalk.cyan(branch ?? "-"));
 if (lastTag)           console.log(chalk.dim(`  Last tag       : `) + chalk.cyan(lastTag));
-if (semanticChangelog) console.log(chalk.dim(`  Changelog mode : `) + chalk.magenta("semantic"));
+if (semanticChangelog) console.log(chalk.dim(`  Changelog mode : `) + chalk.magenta("semantic — auto-generated from commits"));
 if (dryRun)            console.log(chalk.dim(`  Mode           : `) + chalk.yellow.bold("dry-run — no files, commits, tags or pushes will be made"));
 if (cli.headless)      console.log(chalk.dim(`  Mode           : `) + chalk.cyan.bold("headless — running without prompts"));
 console.log();
 
 // ── Resolve action ────────────────────────────────────────────────────────
-// Priority:
-//   1. headless (command + --yes)  → use cli.command directly, no prompt
-//   2. cli.command provided        → skip the main menu, go straight to that command
-//   3. nothing                     → show the interactive menu
 let accion;
 
 if (cli.headless) {
@@ -260,8 +254,8 @@ if (accion === "rollback") {
 }
 
 // ── Release / Commit / Changelog ────────────────────────────────────────────
-let bumpResult    = null;
-let changelogAction = "none";
+let bumpResult     = null;
+let changelogDone  = false;
 let commitMessage  = null;
 
 if (accion === "release") {
@@ -325,50 +319,69 @@ if (accion === "release") {
 }
 
 // ── Changelog step ────────────────────────────────────────────────────────
-// Skipped in headless mode.
-// When semanticChangelog = true, "Add new entry" calls buildSemanticChangelog
-// instead of the manual buildChangelog.
-if (!cli.headless && (accion === "release" || accion === "changelog")) {
-  while (true) {
-    const addLabel = semanticChangelog
-      ? "Add new entry  (semantic — from commits)"
-      : "Add new entry";
+//
+// Two completely separate paths depending on semanticChangelog:
+//
+//   SEMANTIC MODE
+//     ─ Interactive : parse commits → checkbox review → preview → confirm save
+//     ─ Headless    : parse commits → include all recognised → save silently
+//
+//   MANUAL MODE
+//     ─ Interactive : show add/edit menu (original behaviour)
+//     ─ Headless    : skip entirely (no changelog entries, just commit)
+//
+if (accion === "release" || accion === "changelog") {
+  if (semanticChangelog) {
+    // ──────────────────────────────────────────────────────────────────
+    // SEMANTIC: always auto-generate. Version is taken from the bump result
+    // when in release mode, or prompted/inferred otherwise.
+    // ──────────────────────────────────────────────────────────────────
+    if (!dryRun) {
+      const result = await buildSemanticChangelog(config, {
+        headless: cli.headless,
+        // In headless release mode we pass the bump version so it's
+        // used directly without reading package.json (which hasn't been
+        // written yet at this point in the flow).
+        version: cli.headless && cli.bump ? null : null,
+      });
+      changelogDone = result.saved;
+    } else {
+      console.log(chalk.dim("  [dry-run] semantic changelog — would generate from commits, not saved\n"));
+    }
+  } else {
+    // ──────────────────────────────────────────────────────────────────
+    // MANUAL: interactive menu only (headless skips changelog entirely)
+    // ──────────────────────────────────────────────────────────────────
+    if (!cli.headless) {
+      while (true) {
+        const { action } = await inquirer.prompt([
+          {
+            type: "list", name: "action", message: "What to do with the changelog?",
+            choices: [
+              { name: "Do nothing",            value: "none" },
+              { name: "Add new entry",          value: "add"  },
+              { name: "Edit existing version",  value: "edit" },
+            ],
+            default: "none",
+          },
+        ]);
 
-    const { action } = await inquirer.prompt([
-      {
-        type: "list", name: "action", message: "What to do with the changelog?",
-        choices: [
-          { name: "Do nothing", value: "none" },
-          { name: addLabel,     value: "add" },
-          { name: "Edit existing version", value: "edit" },
-        ],
-        default: "none",
-      },
-    ]);
-
-    if (action === "none") break;
-
-    if (action === "add") {
-      if (semanticChangelog) {
-        await buildSemanticChangelog(config);
-      } else {
-        await buildChangelog(config);
+        if (action === "none") break;
+        if (action === "add")  await buildChangelog(config);
+        if (action === "edit") await editChangelog(config);
+        changelogDone = true;
       }
     }
-
-    if (action === "edit") await editChangelog(config);
-    changelogAction = action;
   }
 }
 
-// Commit message
-// - headless o --yes sin --message → usar default sin preguntar
-// - --message explícito            → usar directamente
-// - ninguno de los anteriores      → prompt
+// ── Commit message ────────────────────────────────────────────────────────
 if (accion !== "changelog") {
-  const defaultMsg = accion === "release" ? config.git.releaseCommitMessage : config.git.defaultCommitMessage;
+  const defaultMsg = accion === "release"
+    ? config.git.releaseCommitMessage
+    : config.git.defaultCommitMessage;
+
   if (cli.headless || cli.yes) {
-    // --yes solo o headless: usar el mensaje provisto o el default, sin prompt
     commitMessage = cli.message ?? defaultMsg;
     if (!cli.headless) console.log(chalk.dim(`  Message: ${chalk.cyan(commitMessage)}\n`));
   } else if (cli.message) {
@@ -392,9 +405,8 @@ console.log("\n" + chalk.bold("  Operation summary:"));
 console.log(chalk.dim("  ─────────────────────────"));
 console.log(`  Action    : ${chalk.cyan(accion)}`);
 console.log(`  VCS       : ${chalk.cyan(vcsLabel(config.vcs?.provider))}`);
-if (semanticChangelog) console.log(`  Changelog : ${chalk.magenta("semantic")}`);
-if (dryRun)            console.log(`  Mode      : ${chalk.yellow.bold("dry-run")}`);
-if (cli.headless)      console.log(`  Mode      : ${chalk.cyan.bold("headless")}`);
+if (dryRun)       console.log(`  Mode      : ${chalk.yellow.bold("dry-run")}`);
+if (cli.headless) console.log(`  Mode      : ${chalk.cyan.bold("headless")}`);
 if (bumpResult) {
   console.log(`  Targets   : ${chalk.cyan(bumpResult.targets.join(", "))}`);
   console.log(`  Bump      : ${chalk.cyan(bumpResult.bumpType)}`);
@@ -402,10 +414,10 @@ if (bumpResult) {
 if (commitMessage) console.log(`  Message   : ${chalk.cyan(commitMessage)}`);
 console.log(
   `  Changelog : ${
-    changelogAction === "add"  ? (semanticChangelog ? chalk.magenta("semantic entry") : chalk.green("new entry")) :
-    changelogAction === "edit" ? chalk.yellow("edit existing") :
-    chalk.dim("no")
-  }`,
+    semanticChangelog
+      ? (changelogDone ? chalk.magenta("semantic — generated") : chalk.dim("semantic — skipped (dry-run)"))
+      : (changelogDone ? chalk.green("manual — entry added")  : chalk.dim("none"))
+  }`
 );
 
 printPreActionsSummary(config, accion);
