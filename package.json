@@ -1,6 +1,6 @@
 {
   "name": "@ajax-16/vit",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "description": "CLI de versionado y changelog para Al-Andalus-Hispania",
   "type": "module",
   "main": "index.js",

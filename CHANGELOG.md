@@ -1,5 +1,19 @@
 # Changelog
 
+## [v-0.0.22] - 27/04/2026
+
+### 🐛 Bug fixes
+
+- specified dry-run on changelog summary operation when dry run was not selected
+
+- test
+
+
+### 📚 Documentation
+
+- update changelog
+
+
 ## [v-0.0.21] - 27/04/2026
 
 ### 🐛 Bug fixes
