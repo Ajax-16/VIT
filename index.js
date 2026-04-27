@@ -78,6 +78,7 @@ function printError(err) {
 const config = loadVitConfig();
 const vcs = getVcsAdapter(config.vcs?.provider ?? "git");
 const semanticChangelog = config.changelog?.semantic === true;
+const rollbackStrategy = config.git?.rollbackStrategy ?? "revert";
 
 console.log(
   "\n" +
@@ -260,13 +261,54 @@ if (accion === "rollback") {
     selectedTag = answer.selectedTag;
   }
 
+  // ── Commit preview ──────────────────────────────────────────────────────────
+  // Show the commits that will be affected before asking for confirmation.
+  // This gives the user full visibility before an irreversible operation.
+  const affectedCommits = vcs.getCommitsBetweenTagAndHead(selectedTag);
+
+  if (affectedCommits.length === 0) {
+    console.log(
+      chalk.yellow(
+        `\n  ⚠ No commits found between ${selectedTag} and HEAD. Nothing to roll back.\n`,
+      ),
+    );
+    process.exit(0);
+  }
+
+  const strategyLabel =
+    rollbackStrategy === "reset"
+      ? chalk.yellow.bold("reset") +
+        chalk.dim(" — rewrites history, force push will be needed")
+      : chalk.green.bold("revert") +
+        chalk.dim(" — creates a new commit, history preserved");
+
+  console.log(
+    "\n" +
+      chalk.bold("  Commits that will be rolled back:") +
+      "  " +
+      chalk.dim(`(strategy: ${rollbackStrategy})`),
+  );
+  console.log(chalk.dim("  ─────────────────────────────────────────────"));
+  for (const subject of affectedCommits) {
+    console.log(chalk.dim("  · ") + subject);
+  }
+  console.log();
+  console.log(`  Strategy  : ${strategyLabel}`);
+  console.log(
+    `  Target tag: ${chalk.cyan(selectedTag)}` +
+      chalk.dim(` (${affectedCommits.length} commit(s) affected)`) +
+      "\n",
+  );
+
   if (!cli.yes) {
     const { confirmRollback } = await inquirer.prompt([
       {
         type: "confirm",
         name: "confirmRollback",
         message: chalk.yellow(
-          `Confirm rollback to ${selectedTag}? This will modify the history.`,
+          rollbackStrategy === "reset"
+            ? `Confirm reset to ${selectedTag}? This will rewrite history.`
+            : `Confirm revert to ${selectedTag}? A new commit will be created.`,
         ),
         default: false,
       },
@@ -279,67 +321,119 @@ if (accion === "rollback") {
 
   if (dryRun) {
     console.log(
-      chalk.dim(`\n  [dry-run] rollback to ${selectedTag} — not executed\n`),
+      chalk.dim(
+        `\n  [dry-run] rollback to ${selectedTag} via ${rollbackStrategy} — not executed\n`,
+      ),
     );
     process.exit(0);
   }
 
   const spinner = ora({
-    text: "Executing rollback...",
+    text:
+      rollbackStrategy === "reset"
+        ? `Resetting to ${selectedTag}...`
+        : `Reverting commits to ${selectedTag}...`,
     color: "yellow",
   }).start();
+
   try {
-    vcs.rollbackToTag(selectedTag);
-    spinner.succeed(chalk.green(`Rollback to ${selectedTag} completed.`));
-    console.log(
-      chalk.dim("\n  The files have been reverted to the state of the tag."),
-    );
-    if (vcs.supportsPush())
+    if (rollbackStrategy === "reset") {
+      vcs.rollbackToTag(selectedTag);
+      spinner.succeed(chalk.green(`Reset to ${selectedTag} completed.`));
+      console.log(
+        chalk.dim("\n  The files have been reverted to the state of the tag."),
+      );
+      if (vcs.supportsPush())
+        console.log(
+          chalk.yellow(
+            "  ⚠  History was rewritten — a force push will be needed.\n",
+          ),
+        );
+      else console.log();
+    } else {
+      // revert strategy
+      vcs.revertToTag(selectedTag);
+      spinner.succeed(chalk.green(`Revert to ${selectedTag} completed.`));
       console.log(
         chalk.dim(
-          "  Use a force push if you need to upload the rollback to the remote.\n",
+          "\n  A new revert commit has been created. You can push normally.\n",
         ),
       );
-    else console.log();
+
+      if (vcs.supportsPush()) {
+        let doPush = cli.yes;
+        if (!cli.yes) {
+          const ans = await inquirer.prompt([
+            {
+              type: "confirm",
+              name: "doPush",
+              message: "Push the revert commit to the remote?",
+              default: true,
+            },
+          ]);
+          doPush = ans.doPush;
+        }
+        if (doPush) {
+          const pushSpinner = ora({ text: "Pushing...", color: "cyan" }).start();
+          try {
+            vcs.pushWithTags();
+            pushSpinner.succeed(chalk.green("Pushed successfully."));
+          } catch (pushErr) {
+            pushSpinner.fail(chalk.red("Push failed."));
+            printError(pushErr);
+          }
+        } else {
+          console.log(chalk.dim("  Push skipped. Run git push when ready.\n"));
+        }
+      }
+    }
   } catch (err) {
     spinner.fail(chalk.red("Error during rollback"));
     printError(err);
     process.exit(1);
   }
 
-  const tagsAfter = vcs.getTagsAfter(selectedTag);
-  if (tagsAfter.length > 0) {
-    console.log(chalk.dim(`\n  Tags after ${selectedTag}:`));
-    tagsAfter.forEach((t) => console.log(chalk.dim(`    · ${t}`)));
-    console.log();
+  // ── Tags cleanup (reset strategy only) ────────────────────────────────────
+  // In revert mode the tags are still valid (they point to real commits).
+  // In reset mode they may point to commits that no longer exist locally,
+  // so we offer to delete them as before.
+  if (rollbackStrategy === "reset") {
+    const tagsAfter = vcs.getTagsAfter(selectedTag);
+    if (tagsAfter.length > 0) {
+      console.log(chalk.dim(`\n  Tags after ${selectedTag}:`));
+      tagsAfter.forEach((t) => console.log(chalk.dim(`    · ${t}`)));
+      console.log();
 
-    let deleteTags = cli.yes;
-    if (!cli.yes) {
-      const ans = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "deleteTags",
-          message: chalk.yellow(`Delete these ${tagsAfter.length} tag(s)?`),
-          default: false,
-        },
-      ]);
-      deleteTags = ans.deleteTags;
-    }
-
-    if (deleteTags) {
-      const spinnerTags = ora({
-        text: "Deleting tags...",
-        color: "yellow",
-      }).start();
-      try {
-        for (const t of tagsAfter) vcs.deleteTag(t);
-        spinnerTags.succeed(chalk.green(`${tagsAfter.length} tag(s) deleted.`));
-      } catch (err) {
-        spinnerTags.fail(chalk.red("Error deleting tags"));
-        printError(err);
+      let deleteTags = cli.yes;
+      if (!cli.yes) {
+        const ans = await inquirer.prompt([
+          {
+            type: "confirm",
+            name: "deleteTags",
+            message: chalk.yellow(`Delete these ${tagsAfter.length} tag(s)?`),
+            default: false,
+          },
+        ]);
+        deleteTags = ans.deleteTags;
       }
-    } else {
-      console.log(chalk.dim("  Tags preserved.\n"));
+
+      if (deleteTags) {
+        const spinnerTags = ora({
+          text: "Deleting tags...",
+          color: "yellow",
+        }).start();
+        try {
+          for (const t of tagsAfter) vcs.deleteTag(t);
+          spinnerTags.succeed(
+            chalk.green(`${tagsAfter.length} tag(s) deleted.`),
+          );
+        } catch (err) {
+          spinnerTags.fail(chalk.red("Error deleting tags"));
+          printError(err);
+        }
+      } else {
+        console.log(chalk.dim("  Tags preserved.\n"));
+      }
     }
   }
 
@@ -447,35 +541,15 @@ if (accion === "release") {
 }
 
 // ── Changelog step ────────────────────────────────────────────────────────────
-//
-// SEMANTIC MODE  (semanticChangelog: true)
-//   Always regenerates the FULL changelog from all git tags.
-//   When called from a release flow, computes the pending tag from the current
-//   version + bump type so that unreleased commits are included even though the
-//   tag does not exist yet in the repository.
-//   Interactive → preview first 80 lines → confirm overwrite.
-//   Headless    → overwrites silently with no prompts.
-//
-// MANUAL MODE  (semanticChangelog: false, default)
-//   Interactive → show add/edit menu (original behaviour).
-//   Headless    → skip entirely.
-//
 if (accion === "release" || accion === "changelog") {
   if (semanticChangelog) {
     if (!dryRun) {
-      // ── Compute pending tag for release flow ────────────────────────────
-      // The changelog is built before the bump runs, so the new tag does not
-      // exist yet. We derive it here so the upcoming release section is
-      // included in the generated output.
       let pendingTag;
       if (accion === "release" && bumpResult) {
         try {
           const selectedProjects = config.projects.filter((p) =>
             bumpResult.targets.includes(p.id),
           );
-          // Use the first target project to compute the pending version.
-          // For multi-project monorepos the tag is a joined string; we build
-          // it the same way bump.js does.
           const pendingVersions = selectedProjects.map((p) => {
             const pkg = JSON.parse(
               readFileSync(resolve(p.path, "package.json"), "utf-8"),
@@ -485,8 +559,6 @@ if (accion === "release" || accion === "changelog") {
           });
           pendingTag = pendingVersions.join("-");
         } catch {
-          // If we cannot read the version for any reason, fall back to no
-          // pending tag (same behaviour as before this fix).
           pendingTag = undefined;
         }
       }
@@ -578,7 +650,7 @@ console.log(
     semanticChangelog
       ? changelogDone
         ? chalk.magenta("semantic — fully regenerated")
-        : chalk.dim("semantic — skipped")
+        : chalk.dim("semantic — skipped (dry-run)")
       : changelogDone
         ? chalk.green("manual — entry added")
         : chalk.dim("none")
