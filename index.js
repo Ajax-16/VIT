@@ -10,8 +10,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { bump, getNextVersion } from "./lib/bump.js";
 import {
-  buildChangelog,
-  buildSemanticChangelog,
+  runChangelog,
   editChangelog,
 } from "./lib/changelog.js";
 import { loadVitConfig, checkReleaseBranch } from "./lib/config.js";
@@ -20,7 +19,7 @@ import { printPostActionsSummary, runPostActions } from "./lib/post-actions.js";
 import { printPreActionsSummary, runPreActions } from "./lib/pre-actions.js";
 import { parseArgs, printHelp, printVersion } from "./lib/cli.js";
 
-// ── Parse CLI args ────────────────────────────────────────────────────────────
+// ── Parse CLI args ──────────────────────────────────────────────────────────────────
 const cli = parseArgs();
 
 if (cli.help) {
@@ -34,7 +33,7 @@ if (cli.version) {
 
 const dryRun = cli.dryRun;
 
-// ── Error log helper ──────────────────────────────────────────────────────────
+// ── Error log helper ────────────────────────────────────────────────────────────────
 function writeErrorLog(err) {
   const logDir = join(tmpdir(), "vit-logs");
   mkdirSync(logDir, { recursive: true });
@@ -74,7 +73,7 @@ function printError(err) {
   );
 }
 
-// ── Boot banner ───────────────────────────────────────────────────────────────
+// ── Boot banner ───────────────────────────────────────────────────────────────────
 const config = loadVitConfig();
 const vcs = getVcsAdapter(config.vcs?.provider ?? "git");
 const semanticChangelog = config.changelog?.semantic === true;
@@ -120,7 +119,7 @@ if (cli.headless)
   );
 console.log();
 
-// ── Resolve action ────────────────────────────────────────────────────────────
+// ── Resolve action ──────────────────────────────────────────────────────────────────
 let accion;
 
 if (cli.headless) {
@@ -168,7 +167,7 @@ if (
   process.exit(0);
 }
 
-// ── Branch guard (release only) ───────────────────────────────────────────────
+// ── Branch guard (release only) ──────────────────────────────────────────────────────────
 if (accion === "release" && branch) {
   const { allowed } = checkReleaseBranch(config.git.releaseBranches, branch);
 
@@ -226,7 +225,7 @@ if (accion === "release" && branch) {
   }
 }
 
-// ── Rollback ──────────────────────────────────────────────────────────────────
+// ── Rollback ───────────────────────────────────────────────────────────────────────────
 if (accion === "rollback") {
   const tags = vcs.getAllTags();
 
@@ -261,9 +260,6 @@ if (accion === "rollback") {
     selectedTag = answer.selectedTag;
   }
 
-  // ── Commit preview ──────────────────────────────────────────────────────────
-  // Show the commits that will be affected before asking for confirmation.
-  // This gives the user full visibility before an irreversible operation.
   const affectedCommits = vcs.getCommitsBetweenTagAndHead(selectedTag);
 
   if (affectedCommits.length === 0) {
@@ -351,7 +347,6 @@ if (accion === "rollback") {
         );
       else console.log();
     } else {
-      // revert strategy
       vcs.revertToTag(selectedTag);
       spinner.succeed(chalk.green(`Revert to ${selectedTag} completed.`));
       console.log(
@@ -396,10 +391,6 @@ if (accion === "rollback") {
     process.exit(1);
   }
 
-  // ── Tags cleanup (reset strategy only) ────────────────────────────────────
-  // In revert mode the tags are still valid (they point to real commits).
-  // In reset mode they may point to commits that no longer exist locally,
-  // so we offer to delete them as before.
   if (rollbackStrategy === "reset") {
     const tagsAfter = vcs.getTagsAfter(selectedTag);
     if (tagsAfter.length > 0) {
@@ -443,7 +434,7 @@ if (accion === "rollback") {
   process.exit(0);
 }
 
-// ── Release / Commit / Changelog ──────────────────────────────────────────────
+// ── Release / Commit / Changelog ───────────────────────────────────────────────────────────
 let bumpResult = null;
 let changelogDone = false;
 let commitMessage = null;
@@ -543,43 +534,41 @@ if (accion === "release") {
     );
 }
 
-// ── Changelog step ────────────────────────────────────────────────────────────
+// ── Changelog step ───────────────────────────────────────────────────────────────────────
 if (accion === "release" || accion === "changelog") {
-  if (semanticChangelog) {
-    if (!dryRun) {
-      let pendingTag;
-      if (accion === "release" && bumpResult) {
-        try {
-          const selectedProjects = config.projects.filter((p) =>
-            bumpResult.targets.includes(p.id),
-          );
-          const pendingVersions = selectedProjects.map((p) => {
-            const pkg = JSON.parse(
-              readFileSync(resolve(p.path, "package.json"), "utf-8"),
-            );
-            const nextVer = getNextVersion(pkg.version, bumpResult.bumpType);
-            return `${p.tagPrefix}-${nextVer}`;
-          });
-          pendingTag = pendingVersions.join("-");
-        } catch {
-          pendingTag = undefined;
-        }
-      }
-
-      const result = await buildSemanticChangelog(config, {
-        headless: cli.headless,
-        pendingTag,
-      });
-      changelogDone = result.saved;
-    } else {
-      console.log(
-        chalk.dim(
-          "  [dry-run] semantic changelog — would regenerate from all tags, not saved\n",
-        ),
-      );
-    }
+  if (dryRun) {
+    console.log(
+      chalk.dim(
+        semanticChangelog
+          ? "  [dry-run] semantic changelog — would regenerate from all tags, not saved\n"
+          : "  [dry-run] changelog — skipped in dry-run\n",
+      ),
+    );
   } else {
-    if (!cli.headless) {
+    // Compute pendingTag when inside a release
+    let pendingTag;
+    if (accion === "release" && bumpResult) {
+      try {
+        const selectedProjects = config.projects.filter((p) =>
+          bumpResult.targets.includes(p.id),
+        );
+        const pendingVersions = selectedProjects.map((p) => {
+          const pkg = JSON.parse(
+            readFileSync(resolve(p.path, "package.json"), "utf-8"),
+          );
+          const nextVer = getNextVersion(pkg.version, bumpResult.bumpType);
+          return `${p.tagPrefix}-${nextVer}`;
+        });
+        pendingTag = pendingVersions.join("-");
+      } catch {
+        pendingTag = undefined;
+      }
+    }
+
+    // Non-semantic manual mode: show add/edit menu first (interactive only)
+    // runChangelog handles headless no-op internally for non-semantic mode,
+    // but the extra add/edit menu only makes sense in interactive non-semantic mode.
+    if (!semanticChangelog && !cli.headless) {
       while (true) {
         const { action } = await inquirer.prompt([
           {
@@ -596,15 +585,26 @@ if (accion === "release" || accion === "changelog") {
         ]);
 
         if (action === "none") break;
-        if (action === "add") await buildChangelog(config);
-        if (action === "edit") await editChangelog(config);
-        changelogDone = true;
+        if (action === "edit") {
+          await editChangelog(config);
+          changelogDone = true;
+          continue;
+        }
+        // action === "add" — fall through to runChangelog below
+        break;
       }
     }
+
+    // Delegate to the unified dispatcher (handles all 4 modes)
+    const result = await runChangelog(config, {
+      headless: cli.headless,
+      pendingTag,
+    });
+    if (result?.saved) changelogDone = true;
   }
 }
 
-// ── Commit message ────────────────────────────────────────────────────────────
+// ── Commit message ────────────────────────────────────────────────────────────────────
 if (accion !== "changelog") {
   const defaultMsg =
     accion === "release"
@@ -636,7 +636,7 @@ if (accion !== "changelog") {
   }
 }
 
-// ── Summary ───────────────────────────────────────────────────────────────────
+// ── Summary ────────────────────────────────────────────────────────────────────────────
 console.log("\n" + chalk.bold("  Operation summary:"));
 console.log(chalk.dim("  ─────────────────────────────"));
 console.log(`  Action    : ${chalk.cyan(accion)}`);
@@ -664,7 +664,7 @@ printPreActionsSummary(config, accion);
 printPostActionsSummary(config, accion);
 console.log();
 
-// ── Confirm & Execute ─────────────────────────────────────────────────────────
+// ── Confirm & Execute ────────────────────────────────────────────────────────────────────────
 if (accion === "changelog") {
   if (!vcs.supportsCommit()) {
     console.log(
@@ -731,7 +731,7 @@ if (accion === "changelog") {
   }
 }
 
-// ── Run ───────────────────────────────────────────────────────────────────────
+// ── Run ────────────────────────────────────────────────────────────────────────────────
 try {
   await runPreActions(config, accion);
 } catch (err) {

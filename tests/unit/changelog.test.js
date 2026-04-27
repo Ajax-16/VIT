@@ -21,11 +21,8 @@ const {
   parseAllTagsWithCommits,
   parseCommitsSinceLastTag,
   buildSemanticChangelogHeadless,
-  buildSemanticChangelogInteractive,
   runChangelog,
 } = await import('../../lib/changelog.js');
-
-import inquirer from 'inquirer';
 
 // ── default config ───────────────────────────────────────────────────────────
 const BASE_CONFIG = {
@@ -233,7 +230,6 @@ describe('runChangelog dispatch', () => {
     mockExecSync.mockReset();
     mockWriteFileSync.mockReset();
     mockExistsSync.mockReturnValue(false);
-    inquirer.__reset();
   });
 
   test('MODE 2: non-semantic headless → does NOT write file', async () => {
@@ -250,13 +246,12 @@ describe('runChangelog dispatch', () => {
     expect(mockWriteFileSync).toHaveBeenCalledTimes(1);
   });
 
-  test('MODE 3: semantic interactive without pendingTag → falls back to manual', async () => {
-    // Manual mode prompts for version + intro + entries — simulate minimal answers
-    inquirer.__setAnswers(['1.0.0', '', 'feat', '', 'my change', false, false]);
-    // If it tries to write the file mock to catch it — but in manual mode
-    // user will be asked to confirm (last answer = false → discard)
-    await runChangelog(BASE_CONFIG, { headless: false, pendingTag: undefined });
-    // No file written because user discarded
+  test('MODE 3: semantic interactive without pendingTag → warns and returns { saved: false }', async () => {
+    // No pendingTag — semantic mode can only write during a release.
+    // runChangelog should print a warning and exit without touching the filesystem.
+    const result = await runChangelog(BASE_CONFIG, { headless: false, pendingTag: undefined });
     expect(mockWriteFileSync).not.toHaveBeenCalled();
+    expect(mockExecSync).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ saved: false });
   });
 });
