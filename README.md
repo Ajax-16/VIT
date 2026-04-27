@@ -735,13 +735,12 @@ Ejemplo de configuración completa para un monorepo con backend y frontend.
       "envFile": ".env.production",
       "promptEnv": [
         { "name": "SSH_PASS", "message": "Contraseña SSH:" },
-        { "name": "OTP",      "message": "Código OTP:", "validate": "otp" }
       ],
       "pipeline": [
         { "command": "node -e \"process.stdout.write(require('./Backend/package.json').version)\"",  "captureAs": "BACK_VERSION" },
         { "command": "node -e \"process.stdout.write(require('./Frontend/package.json').version)\"", "captureAs": "FRONT_VERSION" }
       ],
-      "command": "sshpass -p ${SSH_PASS} ssh ${DEPLOY_USER}@${SERVER_HOST} \"cd /var/www && ./deploy.sh ${BACK_VERSION} ${FRONT_VERSION} ${OTP}\""
+      "command": "sshpass -p ${SSH_PASS} ssh ${DEPLOY_USER}@${SERVER_HOST} \"cd /var/www && ./deploy.sh ${BACK_VERSION} ${FRONT_VERSION}\""
     },
     {
       "id": "summary",
