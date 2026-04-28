@@ -605,7 +605,10 @@ if (accion === "release") {
 }
 
 // ── Changelog step ───────────────────────────────────────────────────────────────────────
-if (accion === "release" || accion === "changelog") {
+if (
+  (accion === "release" || accion === "changelog") &&
+  bumpResult.bumpType !== "prerelease"
+) {
   if (dryRun) {
     console.log(
       chalk.dim(
