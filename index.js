@@ -171,60 +171,98 @@ if (
   process.exit(0);
 }
 
-// ── Branch guard (release only) ──────────────────────────────────────────────────────────
+// ── Branch guard (release only) ─────────────────────────────────────────────────────
 if (accion === "release" && branch) {
-  const { allowed } = checkReleaseBranch(config.git.releaseBranches, branch);
+  const preReleaseBranches = config.git.preReleaseBranches ?? [];
+  const isPreReleaseBranch =
+    branch &&
+    preReleaseBranches.some((pattern) => {
+      const name = typeof pattern === "string" ? pattern : pattern?.name;
+      if (!name) return false;
+      const escaped = name
+        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+        .replace(/\*/g, ".*");
+      return new RegExp(`^${escaped}$`).test(branch);
+    });
 
-  if (!allowed) {
-    const allowed_list = config.git.releaseBranches.join(", ");
-
-    if (config.git.strict && !dryRun) {
+  if (isPreReleaseBranch) {
+    // Pre-release branch: bloquear bump incompatible antes de cualquier interacción
+    if (cli.bump && cli.bump !== "prerelease") {
       console.log(
         "\n" +
           chalk.bgRed.white.bold("  BLOCKED  ") +
           "  " +
-          chalk.red.bold(`Releases are not allowed from branch "${branch}".`) +
+          chalk.red.bold(
+            `You are on a pre-release branch ("${branch}"). --bump ${cli.bump} is not allowed here.`,
+          ) +
           "\n" +
-          chalk.dim(`  Allowed branches: ${allowed_list}`) +
+          chalk.dim(
+            `  Only --bump prerelease (or no --bump) is valid from this branch.`,
+          ) +
+          "\n" +
+          chalk.dim(
+            `  To do a stable release, merge into "${config.git.releaseBranches[0] ?? "main"}" first.`,
+          ) +
           "\n",
       );
       process.exit(1);
-    } else {
-      const isDryRunBypass = dryRun && config.git.strict;
-      console.log(
-        "\n" +
-          chalk.bgYellow.black.bold("  WARNING  ") +
-          "  " +
-          chalk.yellow.bold(
-            `You are on branch "${branch}", not on a release branch.`,
-          ) +
-          (isDryRunBypass ? chalk.dim(" (strict bypassed in dry-run)") : "") +
-          "\n" +
-          chalk.dim(`  Configured release branches: ${allowed_list}`) +
-          "\n",
-      );
+    }
+  } else {
+    const { allowed } = checkReleaseBranch(config.git.releaseBranches, branch);
 
-      if (!dryRun && !cli.yes) {
-        const { continueAnyway } = await inquirer.prompt([
-          {
-            type: "confirm",
-            name: "continueAnyway",
-            message: chalk.yellow("Continue anyway?"),
-            default: false,
-          },
-        ]);
-        if (!continueAnyway) {
-          console.log(chalk.yellow("\n  Release cancelled.\n"));
-          process.exit(0);
-        }
-      } else if (cli.yes && !dryRun) {
+    if (!allowed) {
+      const allowed_list = config.git.releaseBranches.join(", ");
+
+      if (config.git.strict && !dryRun) {
         console.log(
-          chalk.dim(
-            "  --yes flag detected, continuing despite branch warning.\n",
-          ),
+          "\n" +
+            chalk.bgRed.white.bold("  BLOCKED  ") +
+            "  " +
+            chalk.red.bold(
+              `Releases are not allowed from branch "${branch}".`,
+            ) +
+            "\n" +
+            chalk.dim(`  Allowed branches: ${allowed_list}`) +
+            "\n",
         );
+        process.exit(1);
+      } else {
+        const isDryRunBypass = dryRun && config.git.strict;
+        console.log(
+          "\n" +
+            chalk.bgYellow.black.bold("  WARNING  ") +
+            "  " +
+            chalk.yellow.bold(
+              `You are on branch "${branch}", not on a release branch.`,
+            ) +
+            (isDryRunBypass ? chalk.dim(" (strict bypassed in dry-run)") : "") +
+            "\n" +
+            chalk.dim(`  Configured release branches: ${allowed_list}`) +
+            "\n",
+        );
+
+        if (!dryRun && !cli.yes) {
+          const { continueAnyway } = await inquirer.prompt([
+            {
+              type: "confirm",
+              name: "continueAnyway",
+              message: chalk.yellow("Continue anyway?"),
+              default: false,
+            },
+          ]);
+          if (!continueAnyway) {
+            console.log(chalk.yellow("\n  Release cancelled.\n"));
+            process.exit(0);
+          }
+        } else if (cli.yes && !dryRun) {
+          console.log(
+            chalk.dim(
+              "  --yes flag detected, continuing despite branch warning.\n",
+            ),
+          );
+        }
+        console.log();
       }
-      console.log();
     }
   }
 }
@@ -498,8 +536,29 @@ if (accion === "release") {
     targets = t.includes("__all__") ? configuredProjects.map((p) => p.id) : t;
   }
 
+  // ── Bump type ──────────────────────────────────────────────────────────────
+  const preReleaseBranches = config.git.preReleaseBranches ?? [];
+  const isPreReleaseBranch =
+    branch &&
+    preReleaseBranches.some((pattern) => {
+      const name = typeof pattern === "string" ? pattern : pattern?.name;
+      if (!name) return false;
+      const escaped = name
+        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+        .replace(/\*/g, ".*");
+      return new RegExp(`^${escaped}$`).test(branch);
+    });
+
   let bumpType;
-  if (cli.bump) {
+
+  if (isPreReleaseBranch) {
+    bumpType = "prerelease";
+    console.log(
+      chalk.dim(
+        `  Pre-release branch ("${branch}"): bump forced to ${chalk.cyan("prerelease")}\n`,
+      ),
+    );
+  } else if (cli.bump) {
     const valid = ["patch", "minor", "major"];
     if (!valid.includes(cli.bump)) {
       console.log(
@@ -549,7 +608,6 @@ if (accion === "release" || accion === "changelog") {
       ),
     );
   } else {
-    // Compute pendingTag when inside a release
     let pendingTag;
     if (accion === "release" && bumpResult) {
       try {
@@ -569,9 +627,6 @@ if (accion === "release" || accion === "changelog") {
       }
     }
 
-    // Non-semantic manual mode: show add/edit menu first (interactive only)
-    // runChangelog handles headless no-op internally for non-semantic mode,
-    // but the extra add/edit menu only makes sense in interactive non-semantic mode.
     if (!semanticChangelog && !cli.headless) {
       while (true) {
         const { action } = await inquirer.prompt([
@@ -594,12 +649,10 @@ if (accion === "release" || accion === "changelog") {
           changelogDone = true;
           continue;
         }
-        // action === "add" — fall through to runChangelog below
         break;
       }
     }
 
-    // Delegate to the unified dispatcher (handles all 4 modes)
     const result = await runChangelog(config, {
       headless: cli.headless,
       pendingTag,
@@ -669,7 +722,7 @@ printPreActionsSummary(config, accion);
 printPostActionsSummary(config, accion);
 console.log();
 
-// ── Confirm & Execute ────────────────────────────────────────────────────────────────────────
+// ── Confirm & Execute ─────────────────────────────────────────────────────────────────
 if (accion === "changelog") {
   if (!vcs.supportsCommit()) {
     console.log(
@@ -736,7 +789,7 @@ if (accion === "changelog") {
   }
 }
 
-// ── Run ────────────────────────────────────────────────────────────────────────────────
+// ── Run ───────────────────────────────────────────────────────────────────────────────
 try {
   await runPreActions(config, accion);
 } catch (err) {

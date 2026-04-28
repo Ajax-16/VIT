@@ -9,7 +9,12 @@
     "releaseCommitMessage": "chore: release",
     "changelogCommitMessage": "docs: update changelog",
     "strict": true,
-    "releaseBranches": ["main"]
+    "releaseBranches": ["main"],
+    "preReleaseBranches": [
+      { "name": "beta" },
+      { "name": "alpha", "id": "alpha" },
+      { "name": "next",  "id": "rc" }
+    ]
   },
   "vcs": {
     "provider": "git"
@@ -40,7 +45,10 @@
       "on": ["release"],
       "continueOnError": false,
       "showOutput": true,
-      "command": "node -e \"console.log('\\n  🎉 Released!\\n  Version  : ${version.vit}\\n  Tag      : ${last_tag}\\n  Name     : ${name}\\n  Date     : ${date}\\n')\""
+      "env": {
+        "URL": "http://${name}.com/${version}"
+      },
+      "command": "node -e \"console.log('\\n  🎉 Released!\\n  Version  : ${version.vit}\\n  Tag      : ${last_tag}\\n  URL    : ${URL}\\n  Date     : ${date}\\n')\""
     }
   ]
 }

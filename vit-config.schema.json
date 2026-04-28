@@ -66,6 +66,27 @@
           "default": ["main"],
           "minItems": 1
         },
+        "preReleaseBranches": {
+          "type": "array",
+          "description": "List of branches from which pre-releases are allowed. When VIT detects the current branch here, it automatically uses a prerelease bump (e.g. 1.2.0-beta.1). Fully opt-in — if omitted, no pre-release behavior is applied.",
+          "items": {
+            "type": "object",
+            "description": "A pre-release branch configuration.",
+            "additionalProperties": false,
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Branch name (exact match, e.g. 'beta', 'alpha', 'next'). Does not support glob patterns."
+              },
+              "id": {
+                "type": "string",
+                "description": "Pre-release identifier used in the version tag (e.g. 'beta' → '1.2.0-beta.1'). Defaults to the branch name if omitted."
+              }
+            }
+          },
+          "default": []
+        },
         "rollbackStrategy": {
           "type": "string",
           "description": "'revert' creates a new commit that undoes changes (history preserved, recommended). 'reset' rewrites history (requires force push, use only on personal repos).",
