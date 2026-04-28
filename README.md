@@ -16,6 +16,54 @@ vit
 
 ---
 
+## Quick start — `vit init`
+
+The fastest way to configure VIT in a new project:
+
+```bash
+vit init
+```
+
+This creates two files in the current directory:
+
+- **`vit-config.json`** — ready-to-edit configuration with sensible defaults.
+- **`.vscode/settings.json`** — enables IntelliSense for `vit-config.json` in VS Code automatically.
+
+```
+  ✔  vit-config.json created.
+  ✔  .vscode/settings.json created.
+
+  VIT  Project initialized. Edit vit-config.json to configure.
+```
+
+> If either file already exists, `vit init` skips it without overwriting anything.
+
+### VS Code IntelliSense
+
+Once initialized, VS Code provides autocompletion, inline documentation and validation for every field in `vit-config.json`:
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/Ajax-16/VIT/main/vit-config.schema.json",
+  "changelog": { ... }
+}
+```
+
+To enable it manually in an existing project, add this to your `.vscode/settings.json`:
+
+```json
+{
+  "json.schemas": [
+    {
+      "fileMatch": ["vit-config.json"],
+      "url": "https://raw.githubusercontent.com/Ajax-16/VIT/main/vit-config.schema.json"
+    }
+  ]
+}
+```
+
+---
+
 ## Usage
 
 Run `vit` at the root of your project. VIT will look for a `vit-config.json` file in the current directory. If it doesn't exist, it will use the default configuration.
@@ -37,12 +85,12 @@ Run `vit` at the root of your project. VIT will look for a `vit-config.json` fil
 
 ### Available actions
 
-| Action | Description |
-|---|---|
+| Action          | Description                                    |
+| --------------- | ---------------------------------------------- |
 | **Version it!** | Version bump + changelog + commit + tag + push |
-| **Changelog** | Add or edit changelog entries without bumping |
-| **Commit** | Commit and push without modifying versions |
-| **Rollback** | Revert the repository to a previous tag |
+| **Changelog**   | Add or edit changelog entries without bumping  |
+| **Commit**      | Commit and push without modifying versions     |
+| **Rollback**    | Revert the repository to a previous tag        |
 
 ---
 
@@ -56,41 +104,41 @@ vit [command] [options]
 
 ### Commands
 
-| Command | Description |
-|---|---|
-| `release` | Run the release flow |
-| `commit` | Run a commit without bumping |
-| `changelog` | Open the changelog flow |
-| `rollback` | Revert to a previous tag |
+| Command     | Description                  |
+| ----------- | ---------------------------- |
+| `release`   | Run the release flow         |
+| `commit`    | Run a commit without bumping |
+| `changelog` | Open the changelog flow      |
+| `rollback`  | Revert to a previous tag     |
 
 ### Options
 
-| Option | Alias | Description |
-|---|---|---|
-| `--bump <type>` | `-b` | Bump type: `patch`, `minor` or `major` |
-| `--message <msg>` | `-m` | Commit message |
-| `--tag <tag>` | `-t` | Target tag for rollback |
-| `--projects <ids>` | `-p` | Comma-separated project IDs (monorepo) |
-| `--semantic` | `-s` | Enable semantic changelog mode |
-| `--yes` | `-y` | Confirm everything automatically without prompts (headless mode) |
-| `--dry-run` | `-d` | Simulate the operation without writing or pushing |
-| `--version` | `-v` | Show VIT version |
-| `--help` | `-h` | Show help |
+| Option             | Alias | Description                                                      |
+| ------------------ | ----- | ---------------------------------------------------------------- |
+| `--bump <type>`    | `-b`  | Bump type: `patch`, `minor` or `major`                           |
+| `--message <msg>`  | `-m`  | Commit message                                                   |
+| `--tag <tag>`      | `-t`  | Target tag for rollback                                          |
+| `--projects <ids>` | `-p`  | Comma-separated project IDs (monorepo)                           |
+| `--semantic`       | `-s`  | Enable semantic changelog mode                                   |
+| `--yes`            | `-y`  | Confirm everything automatically without prompts (headless mode) |
+| `--dry-run`        | `-d`  | Simulate the operation without writing or pushing                |
+| `--version`        | `-v`  | Show VIT version                                                 |
+| `--help`           | `-h`  | Show help                                                        |
 
 ### Behavior by level
 
 Each argument skips only its corresponding prompt; the rest of the interactive flow continues normally.
 
-| Command | What is skipped | What is still asked |
-|---|---|---|
-| `vit release` | Main menu | Bump type, changelog, message, confirmation |
-| `vit release --bump patch` | Menu + bump type | Changelog, message, confirmation |
-| `vit release --bump patch --message "fix"` | Menu + bump + message | Changelog, confirmation |
-| `vit release --bump patch --yes` | Everything (full headless) | Nothing |
-| `vit commit --yes` | Everything (uses default message) | Nothing |
-| `vit changelog --semantic --yes` | Everything (uses commits per tag to regenerate full changelog) | Nothing |
-| `vit rollback --tag v1.2.3` | Menu + tag selector | Confirmation |
-| `vit rollback --tag v1.2.3 --yes` | Everything (full headless) | Nothing |
+| Command                                    | What is skipped                                                | What is still asked                         |
+| ------------------------------------------ | -------------------------------------------------------------- | ------------------------------------------- |
+| `vit release`                              | Main menu                                                      | Bump type, changelog, message, confirmation |
+| `vit release --bump patch`                 | Menu + bump type                                               | Changelog, message, confirmation            |
+| `vit release --bump patch --message "fix"` | Menu + bump + message                                          | Changelog, confirmation                     |
+| `vit release --bump patch --yes`           | Everything (full headless)                                     | Nothing                                     |
+| `vit commit --yes`                         | Everything (uses default message)                              | Nothing                                     |
+| `vit changelog --semantic --yes`           | Everything (uses commits per tag to regenerate full changelog) | Nothing                                     |
+| `vit rollback --tag v1.2.3`                | Menu + tag selector                                            | Confirmation                                |
+| `vit rollback --tag v1.2.3 --yes`          | Everything (full headless)                                     | Nothing                                     |
 
 > **Note:** `--yes` only activates full headless mode when combined with a command. Without `--yes`, each argument skips its own prompt but the rest of the flow remains interactive.
 
@@ -162,11 +210,11 @@ Create a `vit-config.json` file at the root of your project:
 
 ### `changelog`
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `path` | `string` | `./CHANGELOG.md` | Path to the changelog file |
-| `title` | `string` | `Changelog` | Changelog title |
-| `semantic` | `boolean` | `false` | If `true`, the changelog is automatically generated from commits using [Conventional Commits](https://www.conventionalcommits.org/) |
+| Field      | Type      | Default          | Description                                                                                                                         |
+| ---------- | --------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `path`     | `string`  | `./CHANGELOG.md` | Path to the changelog file                                                                                                          |
+| `title`    | `string`  | `Changelog`      | Changelog title                                                                                                                     |
+| `semantic` | `boolean` | `false`          | If `true`, the changelog is automatically generated from commits using [Conventional Commits](https://www.conventionalcommits.org/) |
 
 #### Semantic changelog
 
@@ -200,14 +248,14 @@ Commits that don't follow this format are automatically ignored.
 
 ### `git`
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `defaultCommitMessage` | `string` | `chore: update` | Default message for commits without bump |
-| `releaseCommitMessage` | `string` | `chore: version bump` | Default message for release commits |
-| `changelogCommitMessage` | `string` | `docs: update changelog` | Default message for changelog commits |
-| `releaseBranches` | `string[]` | `[]` | Branches from which releases are allowed |
-| `strict` | `boolean` | `false` | If `true`, blocks the release when on a non-allowed branch |
-| `rollbackStrategy` | `string` | `"revert"` | Rollback strategy: `"revert"` (default) or `"reset"` |
+| Field                    | Type       | Default                  | Description                                                |
+| ------------------------ | ---------- | ------------------------ | ---------------------------------------------------------- |
+| `defaultCommitMessage`   | `string`   | `chore: update`          | Default message for commits without bump                   |
+| `releaseCommitMessage`   | `string`   | `chore: version bump`    | Default message for release commits                        |
+| `changelogCommitMessage` | `string`   | `docs: update changelog` | Default message for changelog commits                      |
+| `releaseBranches`        | `string[]` | `[]`                     | Branches from which releases are allowed                   |
+| `strict`                 | `boolean`  | `false`                  | If `true`, blocks the release when on a non-allowed branch |
+| `rollbackStrategy`       | `string`   | `"revert"`               | Rollback strategy: `"revert"` (default) or `"reset"`       |
 
 #### Branch control for releases
 
@@ -277,19 +325,19 @@ Before executing any action, VIT always shows a **preview of the affected commit
 
 ### `vcs`
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `provider` | `string` | `git` | VCS provider. Currently supported: `git` |
+| Field      | Type     | Default | Description                              |
+| ---------- | -------- | ------- | ---------------------------------------- |
+| `provider` | `string` | `git`   | VCS provider. Currently supported: `git` |
 
 ### `projects`
 
 Array of projects to manage. Useful for monorepos.
 
-| Field | Type | Description |
-|---|---|---|
-| `id` | `string` | Unique project identifier |
-| `label` | `string` | Human-readable project name |
-| `path` | `string` | Relative path to the project directory |
+| Field       | Type     | Description                                                  |
+| ----------- | -------- | ------------------------------------------------------------ |
+| `id`        | `string` | Unique project identifier                                    |
+| `label`     | `string` | Human-readable project name                                  |
+| `path`      | `string` | Relative path to the project directory                       |
 | `tagPrefix` | `string` | Prefix for git tags (`v` → `v1.2.3`, `vback` → `vback1.2.3`) |
 
 **Monorepo example:**
@@ -364,28 +412,28 @@ VIT allows you to run commands automatically before (`preActions`) and after (`p
 }
 ```
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `id` | `string` | auto | Unique identifier |
-| `label` | `string` | `command` | Text shown in the spinner |
-| `on` | `string[]` | `["release"]` | Triggers: `release`, `commit`, `changelog` |
-| `cwd` | `string` | `.` | Working directory for the command |
-| `continueOnError` | `boolean` | `false` | If `true`, an error doesn't stop execution |
-| `showOutput` | `boolean` | `true` | Show stdout/stderr in real time |
-| `timeoutMs` | `number` | `null` | Timeout in ms. `null` = no limit |
-| `envFile` | `string` | `null` | Path to a `.env` specific to this action (higher priority than global `envFile`) |
-| `env` | `object` | `{}` | Static environment variables (higher priority than `envFile`) |
-| `promptEnv` | `array` | `[]` | Variables asked interactively to the user (highest priority) |
-| `pipeline` | `array` | `[]` | Previous steps that enrich the command's environment |
-| `command` | `string` | — | Main command to execute |
+| Field             | Type       | Default       | Description                                                                      |
+| ----------------- | ---------- | ------------- | -------------------------------------------------------------------------------- |
+| `id`              | `string`   | auto          | Unique identifier                                                                |
+| `label`           | `string`   | `command`     | Text shown in the spinner                                                        |
+| `on`              | `string[]` | `["release"]` | Triggers: `release`, `commit`, `changelog`                                       |
+| `cwd`             | `string`   | `.`           | Working directory for the command                                                |
+| `continueOnError` | `boolean`  | `false`       | If `true`, an error doesn't stop execution                                       |
+| `showOutput`      | `boolean`  | `true`        | Show stdout/stderr in real time                                                  |
+| `timeoutMs`       | `number`   | `null`        | Timeout in ms. `null` = no limit                                                 |
+| `envFile`         | `string`   | `null`        | Path to a `.env` specific to this action (higher priority than global `envFile`) |
+| `env`             | `object`   | `{}`          | Static environment variables (higher priority than `envFile`)                    |
+| `promptEnv`       | `array`    | `[]`          | Variables asked interactively to the user (highest priority)                     |
+| `pipeline`        | `array`    | `[]`          | Previous steps that enrich the command's environment                             |
+| `command`         | `string`   | —             | Main command to execute                                                          |
 
 ### Available triggers
 
-| Trigger | When it runs |
-|---|---|
-| `release` | When bumping the version |
-| `commit` | When committing without bump |
-| `changelog` | When committing a changelog |
+| Trigger     | When it runs                 |
+| ----------- | ---------------------------- |
+| `release`   | When bumping the version     |
+| `commit`    | When committing without bump |
+| `changelog` | When committing a changelog  |
 
 ### `promptEnv`
 
@@ -438,6 +486,7 @@ Defined inside a specific action. Overrides variables from the global `envFile` 
 ### Full example
 
 **`vit-config.json`:**
+
 ```json
 {
   "envFile": ".env",
@@ -454,12 +503,14 @@ Defined inside a specific action. Overrides variables from the global `envFile` 
 ```
 
 **`.env`** (available for all actions):
+
 ```env
 APP_ENV=development
 DEPLOY_USER=dev
 ```
 
 **`.env.production`** (only for the `deploy` action, overrides `.env`):
+
 ```env
 APP_ENV=production
 DEPLOY_USER=deploy-bot
@@ -493,16 +544,16 @@ The `pipeline` of an action is a list of commands that run **before** the main `
 
 ### Pipeline step fields
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `id` | `string` | auto | Unique identifier |
-| `label` | `string` | `command` | Text shown in the spinner |
-| `command` | `string` | — | Command to execute |
-| `captureAs` | `string` | `null` | Variable to store stdout in |
-| `cwd` | `string` | `process.cwd()` | Working directory |
-| `continueOnError` | `boolean` | `false` | If `true`, an error doesn't stop the pipeline |
-| `showOutput` | `boolean` | `false` | Show stdout (usually unnecessary in pipeline steps) |
-| `timeoutMs` | `number` | `null` | Timeout in ms |
+| Field             | Type      | Default         | Description                                         |
+| ----------------- | --------- | --------------- | --------------------------------------------------- |
+| `id`              | `string`  | auto            | Unique identifier                                   |
+| `label`           | `string`  | `command`       | Text shown in the spinner                           |
+| `command`         | `string`  | —               | Command to execute                                  |
+| `captureAs`       | `string`  | `null`          | Variable to store stdout in                         |
+| `cwd`             | `string`  | `process.cwd()` | Working directory                                   |
+| `continueOnError` | `boolean` | `false`         | If `true`, an error doesn't stop the pipeline       |
+| `showOutput`      | `boolean` | `false`         | Show stdout (usually unnecessary in pipeline steps) |
+| `timeoutMs`       | `number`  | `null`          | Timeout in ms                                       |
 
 > **Note:** Pipeline steps have `showOutput: false` by default because their purpose is to capture values. The main `command` of the action has `showOutput: true` by default.
 
@@ -528,12 +579,12 @@ This is the most important distinction when designing your configuration.
 
 ### Practical rule
 
-| Situation | Use |
-|---|---|
-| I need the result of step A to build command B | `pipeline` |
-| They are independent tasks that could run separately | separate actions |
+| Situation                                                          | Use              |
+| ------------------------------------------------------------------ | ---------------- |
+| I need the result of step A to build command B                     | `pipeline`       |
+| They are independent tasks that could run separately               | separate actions |
 | I want each task to have its own clearly visible label and spinner | separate actions |
-| I want to prepare context before a complex command | `pipeline` |
+| I want to prepare context before a complex command                 | `pipeline`       |
 
 ---
 
@@ -616,6 +667,7 @@ Uses `envFile` per action to load production credentials without exposing them i
 ```
 
 **`.env.production`:**
+
 ```env
 DEPLOY_USER=deploy-bot
 SERVER_HOST=production.myserver.com
@@ -666,9 +718,7 @@ Sends a message to a Slack channel with the published version, branch and date, 
   "on": ["release"],
   "continueOnError": true,
   "showOutput": false,
-  "promptEnv": [
-    { "name": "SLACK_WEBHOOK", "message": "Slack Webhook URL:" }
-  ],
+  "promptEnv": [{ "name": "SLACK_WEBHOOK", "message": "Slack Webhook URL:" }],
   "pipeline": [
     {
       "command": "node -e \"process.stdout.write(require('./package.json').version)\"",
@@ -701,8 +751,18 @@ Full configuration example for a monorepo with backend and frontend.
   },
   "envFile": ".env",
   "projects": [
-    { "id": "backend",  "label": "Backend",  "path": "./Backend",  "tagPrefix": "vback" },
-    { "id": "frontend", "label": "Frontend", "path": "./Frontend", "tagPrefix": "vfront" }
+    {
+      "id": "backend",
+      "label": "Backend",
+      "path": "./Backend",
+      "tagPrefix": "vback"
+    },
+    {
+      "id": "frontend",
+      "label": "Frontend",
+      "path": "./Frontend",
+      "tagPrefix": "vfront"
+    }
   ],
   "preActions": [
     {
@@ -731,12 +791,16 @@ Full configuration example for a monorepo with backend and frontend.
       "on": ["release"],
       "showOutput": true,
       "envFile": ".env.production",
-      "promptEnv": [
-        { "name": "SSH_PASS", "message": "SSH password:" }
-      ],
+      "promptEnv": [{ "name": "SSH_PASS", "message": "SSH password:" }],
       "pipeline": [
-        { "command": "node -e \"process.stdout.write(require('./Backend/package.json').version)\"",  "captureAs": "BACK_VERSION" },
-        { "command": "node -e \"process.stdout.write(require('./Frontend/package.json').version)\"", "captureAs": "FRONT_VERSION" }
+        {
+          "command": "node -e \"process.stdout.write(require('./Backend/package.json').version)\"",
+          "captureAs": "BACK_VERSION"
+        },
+        {
+          "command": "node -e \"process.stdout.write(require('./Frontend/package.json').version)\"",
+          "captureAs": "FRONT_VERSION"
+        }
       ],
       "command": "sshpass -p ${SSH_PASS} ssh ${DEPLOY_USER}@${SERVER_HOST} \"cd /var/www && ./deploy.sh ${BACK_VERSION} ${FRONT_VERSION}\""
     },
@@ -747,10 +811,19 @@ Full configuration example for a monorepo with backend and frontend.
       "continueOnError": true,
       "showOutput": false,
       "pipeline": [
-        { "command": "node -e \"process.stdout.write(require('./Backend/package.json').version)\"",  "captureAs": "BACK_VERSION" },
-        { "command": "node -e \"process.stdout.write(require('./Frontend/package.json').version)\"", "captureAs": "FRONT_VERSION" },
+        {
+          "command": "node -e \"process.stdout.write(require('./Backend/package.json').version)\"",
+          "captureAs": "BACK_VERSION"
+        },
+        {
+          "command": "node -e \"process.stdout.write(require('./Frontend/package.json').version)\"",
+          "captureAs": "FRONT_VERSION"
+        },
         { "command": "git rev-parse --abbrev-ref HEAD", "captureAs": "BRANCH" },
-        { "command": "node -e \"process.stdout.write(new Date().toISOString().slice(0,16).replace('T',' '))\"", "captureAs": "DATE" }
+        {
+          "command": "node -e \"process.stdout.write(new Date().toISOString().slice(0,16).replace('T',' '))\"",
+          "captureAs": "DATE"
+        }
       ],
       "command": "node -e \"console.log('\\n  ✅ Release complete\\n  Backend  : v${BACK_VERSION}\\n  Frontend : v${FRONT_VERSION}\\n  Branch   : ${BRANCH}\\n  Date     : ${DATE}\\n')\""
     }

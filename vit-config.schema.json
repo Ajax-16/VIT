@@ -5,6 +5,11 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "$schema": {
+        "type": "string",
+        "description": "File schema configuration URL",
+        "additionalProperties": false
+    },
     "changelog": {
       "type": "object",
       "description": "Changelog file configuration.",

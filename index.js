@@ -15,9 +15,15 @@ import { getVcsAdapter, vcsLabel } from "./lib/vcs/index.js";
 import { printPostActionsSummary, runPostActions } from "./lib/post-actions.js";
 import { printPreActionsSummary, runPreActions } from "./lib/pre-actions.js";
 import { parseArgs, printHelp, printVersion } from "./lib/cli.js";
+import { runInit } from "./lib/init.js";
 
 // ── Parse CLI args ──────────────────────────────────────────────────────────────────
 const cli = parseArgs();
+
+if (cli.command === "init") {
+  runInit();
+  process.exit(0);
+}
 
 if (cli.help) {
   printHelp();
