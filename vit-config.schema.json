@@ -1,0 +1,244 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "VIT Config",
+  "description": "Configuration for VIT (Version It!) — version and release manager.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "changelog": {
+      "type": "object",
+      "description": "Changelog file configuration.",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Path to the changelog file (e.g. './CHANGELOG.md').",
+          "default": "./CHANGELOG.md"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the changelog.",
+          "default": "Changelog"
+        },
+        "semantic": {
+          "type": "boolean",
+          "description": "If true, the changelog is fully regenerated from git tags (semantic mode). If false, it is managed manually.",
+          "default": false
+        }
+      }
+    },
+    "git": {
+      "type": "object",
+      "description": "Git configuration for commits, releases and branches.",
+      "additionalProperties": false,
+      "properties": {
+        "defaultCommitMessage": {
+          "type": "string",
+          "description": "Default commit message for regular commit operations.",
+          "default": "chore: update"
+        },
+        "releaseCommitMessage": {
+          "type": "string",
+          "description": "Default commit message when performing a release.",
+          "default": "chore: release"
+        },
+        "changelogCommitMessage": {
+          "type": "string",
+          "description": "Default commit message when updating the changelog.",
+          "default": "docs: update changelog"
+        },
+        "strict": {
+          "type": "boolean",
+          "description": "If true, releases are blocked from branches not listed in 'releaseBranches'. If false, only a warning is shown.",
+          "default": true
+        },
+        "releaseBranches": {
+          "type": "array",
+          "description": "List of branches from which releases are allowed.",
+          "items": {
+            "type": "string",
+            "description": "Allowed branch name (e.g. 'main', 'master', 'release')."
+          },
+          "default": ["main"],
+          "minItems": 1
+        },
+        "rollbackStrategy": {
+          "type": "string",
+          "description": "Rollback strategy. 'revert' creates a new commit that undoes changes (history preserved). 'reset' rewrites history (requires force push).",
+          "enum": ["revert", "reset"],
+          "default": "revert"
+        }
+      }
+    },
+    "vcs": {
+      "type": "object",
+      "description": "Version control system configuration.",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "description": "VCS provider to use.",
+          "enum": ["git"],
+          "default": "git"
+        }
+      }
+    },
+    "envFile": {
+      "type": "string",
+      "description": "Path to the environment variables file to be loaded during operations.",
+      "default": ".env"
+    },
+    "projects": {
+      "type": "array",
+      "description": "List of projects managed by VIT. Each project has its own package.json and can be versioned independently.",
+      "items": {
+        "type": "object",
+        "description": "Configuration for an individual project.",
+        "additionalProperties": false,
+        "required": ["id", "label", "path", "tagPrefix"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique project identifier. Used in CLI with --projects."
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable project name shown in the interface."
+          },
+          "path": {
+            "type": "string",
+            "description": "Relative path to the project directory (where its package.json is located).",
+            "default": "."
+          },
+          "tagPrefix": {
+            "type": "string",
+            "description": "Prefix used for git tags (e.g. 'v' generates tags like 'v1.2.3').",
+            "default": "v"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "preActions": {
+      "type": "array",
+      "description": "Actions executed BEFORE the main operation (commit or release).",
+      "items": {
+        "$ref": "#/definitions/action"
+      }
+    },
+    "postActions": {
+      "type": "array",
+      "description": "Actions executed AFTER the main operation (commit or release).",
+      "items": {
+        "$ref": "#/definitions/pipelineAction"
+      }
+    }
+  },
+  "definitions": {
+    "onEvents": {
+      "type": "array",
+      "description": "Events on which this action is triggered.",
+      "items": {
+        "type": "string",
+        "enum": ["commit", "release"],
+        "description": "'commit' = triggered on regular commits. 'release' = triggered on releases."
+      },
+      "minItems": 1
+    },
+    "action": {
+      "type": "object",
+      "description": "Action to execute (shell command).",
+      "additionalProperties": false,
+      "required": ["id", "label", "on", "command"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique action identifier."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable action name shown in the interface."
+        },
+        "on": {
+          "$ref": "#/definitions/onEvents"
+        },
+        "continueOnError": {
+          "type": "boolean",
+          "description": "If true, VIT continues even if this action fails. If false, the operation is aborted.",
+          "default": false
+        },
+        "showOutput": {
+          "type": "boolean",
+          "description": "If true, the command output is printed to the terminal.",
+          "default": true
+        },
+        "command": {
+          "type": "string",
+          "description": "Shell command to execute."
+        }
+      }
+    },
+    "pipelineAction": {
+      "type": "object",
+      "description": "Post-operation action. Can include a pipeline of steps that capture environment variables.",
+      "additionalProperties": false,
+      "required": ["id", "label", "on", "command"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique action identifier."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable action name."
+        },
+        "on": {
+          "$ref": "#/definitions/onEvents"
+        },
+        "continueOnError": {
+          "type": "boolean",
+          "description": "If true, VIT continues even if this action fails.",
+          "default": false
+        },
+        "showOutput": {
+          "type": "boolean",
+          "description": "If true, the command output is printed to the terminal.",
+          "default": true
+        },
+        "command": {
+          "type": "string",
+          "description": "Shell command to execute (can use variables captured from the pipeline: ${VAR_NAME})."
+        },
+        "pipeline": {
+          "type": "array",
+          "description": "List of preceding steps that capture values into environment variables, available in 'command' as ${VAR_NAME}.",
+          "items": {
+            "type": "object",
+            "description": "Pipeline step that runs a command and captures its output.",
+            "additionalProperties": false,
+            "required": ["id", "command", "captureAs"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Unique step identifier."
+              },
+              "command": {
+                "type": "string",
+                "description": "Shell command whose standard output (stdout) is captured."
+              },
+              "captureAs": {
+                "type": "string",
+                "description": "Name of the environment variable where the command output is stored (e.g. 'NEW_VERSION' → available as ${NEW_VERSION})."
+              },
+              "continueOnError": {
+                "type": "boolean",
+                "description": "If true, the pipeline continues even if this step fails.",
+                "default": false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
