@@ -1,5 +1,48 @@
 # Changelog
 
+## [v-0.0.29] - 28/04/2026
+
+### 🚀 Features
+
+- Added pre-release type of release
+
+
+### 🐛 Bug fixes
+
+- Solved a bug that made last stable tags in changelog semantic generation to not be detected
+
+- Prerelease version tag is now well displayed (ending in pre.0 for the first version instead of pre.1)
+
+- Solved a bug that made the next version on prerelease to not be displayed correctly
+
+- solved a bug in changelog creation process loop
+
+- Solved an error that produced to semantic changelog generation on not headless mode to block vit
+
+
+## [v-0.0.29-alpha.1] - 28/04/2026
+
+### 🐛 Bug fixes
+
+- Prerelease version tag is now well displayed (ending in pre.0 for the first version instead of pre.1)
+
+
+## [v-0.0.29-alpha.0] - 28/04/2026
+
+### 🚀 Features
+
+- Added pre-release type of release
+
+
+### 🐛 Bug fixes
+
+- Solved a bug that made the next version on prerelease to not be displayed correctly
+
+- solved a bug in changelog creation process loop
+
+- Solved an error that produced to semantic changelog generation on not headless mode to block vit
+
+
 ## [v-0.0.28] - 28/04/2026
 
 ### 🚀 Features
