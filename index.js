@@ -538,16 +538,23 @@ if (accion === "release") {
 
   // ── Bump type ──────────────────────────────────────────────────────────────
   const preReleaseBranches = config.git.preReleaseBranches ?? [];
-  const isPreReleaseBranch =
-    branch &&
-    preReleaseBranches.some((pattern) => {
-      const name = typeof pattern === "string" ? pattern : pattern?.name;
-      if (!name) return false;
-      const escaped = name
-        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-        .replace(/\*/g, ".*");
-      return new RegExp(`^${escaped}$`).test(branch);
-    });
+  const matchedPreReleaseBranch = branch
+    ? (preReleaseBranches.find((pattern) => {
+        const name = typeof pattern === "string" ? pattern : pattern?.name;
+        if (!name) return false;
+        const escaped = name
+          .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+          .replace(/\*/g, ".*");
+        return new RegExp(`^${escaped}$`).test(branch);
+      }) ?? null)
+    : null;
+
+  const isPreReleaseBranch = matchedPreReleaseBranch !== null;
+  const preId = isPreReleaseBranch
+    ? typeof matchedPreReleaseBranch === "string"
+      ? matchedPreReleaseBranch
+      : (matchedPreReleaseBranch?.id ?? matchedPreReleaseBranch?.name)
+    : null;
 
   let bumpType;
 
@@ -588,7 +595,7 @@ if (accion === "release") {
     bumpType = ans.bumpType;
   }
 
-  bumpResult = { targets, bumpType };
+  bumpResult = { targets, bumpType, preId };
   if (!cli.headless && !cli.bump)
     console.log(
       chalk.green(
@@ -618,7 +625,11 @@ if (accion === "release" || accion === "changelog") {
           const pkg = JSON.parse(
             readFileSync(resolve(p.path, "package.json"), "utf-8"),
           );
-          const nextVer = getNextVersion(pkg.version, bumpResult.bumpType);
+          const nextVer = getNextVersion(
+            pkg.version,
+            bumpResult.bumpType,
+            bumpResult.preId,
+          );
           return `${p.tagPrefix}-${nextVer}`;
         });
         pendingTag = pendingVersions.join("-");
@@ -818,6 +829,7 @@ try {
       targets: bumpResult.targets,
       bumpType: bumpResult.bumpType,
       message: commitMessage,
+      preId: bumpResult.preId,
       config,
       vcs,
       dryRun,

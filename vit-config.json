@@ -2,7 +2,7 @@
   "changelog": {
     "path": "./CHANGELOG.md",
     "title": "Changelog",
-    "semantic": false
+    "semantic": true
   },
   "git": {
     "defaultCommitMessage": "chore: update",
