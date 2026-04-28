@@ -15,7 +15,7 @@ vit
 ```
 
 ---
-
+<a id="quick-start"></a>
 ## Quick start — `vit init`
 
 The fastest way to configure VIT in a new project:
@@ -177,10 +177,11 @@ vit release --bump patch --projects backend --yes
 
 ## Configuration — `vit-config.json`
 
-Create a `vit-config.json` file at the root of your project:
+Create a `vit-config.json` file at the root of your project or run [`vit init`](#quick-start) to generate one automatically:
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/Ajax-16/VIT/main/vit-config.schema.json",
   "changelog": {
     "path": "./CHANGELOG.md",
     "title": "Changelog",
@@ -190,17 +191,19 @@ Create a `vit-config.json` file at the root of your project:
     "defaultCommitMessage": "chore: update",
     "releaseCommitMessage": "chore: release",
     "changelogCommitMessage": "docs: update changelog",
-    "releaseBranches": ["main"],
-    "strict": false,
-    "rollbackStrategy": "revert"
+    "strict": true,
+    "releaseBranches": [
+      "main"
+    ]
   },
   "vcs": {
     "provider": "git"
   },
+  "envFile": ".env",
   "projects": [
     {
-      "id": "core",
-      "label": "Core",
+      "id": "my-project",
+      "label": "My Project",
       "path": ".",
       "tagPrefix": "v"
     }
