@@ -15,7 +15,7 @@ vit
 ```
 
 ---
-
+<a id="quick-start"></a>
 ## Quick start — `vit init`
 
 The fastest way to configure VIT in a new project:
@@ -177,7 +177,7 @@ vit release --bump patch --projects backend --yes
 
 ## Configuration — `vit-config.json`
 
-Create a `vit-config.json` file at the root of your project or run [`vit init`](#quick-start-—-vit-init) to generate one automatically:
+Create a `vit-config.json` file at the root of your project or run [`vit init`](#quick-start) to generate one automatically:
 
 ```json
 {
