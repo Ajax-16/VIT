@@ -40,31 +40,7 @@
       "on": ["release"],
       "continueOnError": false,
       "showOutput": true,
-      "pipeline": [
-        {
-          "id": "new-version",
-          "command": "node -e \"process.stdout.write(require('./package.json').version)\"",
-          "captureAs": "NEW_VERSION"
-        },
-        {
-          "id": "last-tag",
-          "command": "git describe --tags --abbrev=0",
-          "captureAs": "LAST_TAG",
-          "continueOnError": true
-        },
-        {
-          "id": "commit-count",
-          "command": "git rev-list ${LAST_TAG}..HEAD --count",
-          "captureAs": "COMMIT_COUNT",
-          "continueOnError": true
-        },
-        {
-          "id": "release-date",
-          "command": "node -e \"process.stdout.write(new Date().toISOString().slice(0,10))\"",
-          "captureAs": "RELEASE_DATE"
-        }
-      ],
-      "command": "node -e \"console.log('\\n  🎉 Released!\\n  Version  : ${NEW_VERSION}\\n  Tag      : ${LAST_TAG}\\n  Commits  : ${COMMIT_COUNT}\\n  Date     : ${RELEASE_DATE}\\n')\""
+      "command": "node -e \"console.log('\\n  🎉 Released!\\n  Version  : ${version.vit}\\n  Tag      : ${last_tag}\\n  Name     : ${name}\\n  Date     : ${date}\\n')\""
     }
   ]
 }

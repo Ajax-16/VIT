@@ -6,9 +6,8 @@
   "additionalProperties": false,
   "properties": {
     "$schema": {
-        "type": "string",
-        "description": "File schema configuration URL",
-        "additionalProperties": false
+      "type": "string",
+      "description": "File schema configuration URL."
     },
     "changelog": {
       "type": "object",
@@ -59,17 +58,17 @@
         },
         "releaseBranches": {
           "type": "array",
-          "description": "List of branches from which releases are allowed.",
+          "description": "List of branches from which releases are allowed. Supports glob patterns (e.g. 'release/*').",
           "items": {
             "type": "string",
-            "description": "Allowed branch name (e.g. 'main', 'master', 'release')."
+            "description": "Allowed branch name or glob pattern (e.g. 'main', 'release/*')."
           },
           "default": ["main"],
           "minItems": 1
         },
         "rollbackStrategy": {
           "type": "string",
-          "description": "Rollback strategy. 'revert' creates a new commit that undoes changes (history preserved). 'reset' rewrites history (requires force push).",
+          "description": "'revert' creates a new commit that undoes changes (history preserved, recommended). 'reset' rewrites history (requires force push, use only on personal repos).",
           "enum": ["revert", "reset"],
           "default": "revert"
         }
@@ -90,12 +89,13 @@
     },
     "envFile": {
       "type": "string",
-      "description": "Path to the environment variables file to be loaded during operations.",
+      "description": "Path to a global .env file loaded for all actions. Variables here have lower priority than action-level envFile, env and promptEnv.",
       "default": ".env"
     },
     "projects": {
       "type": "array",
       "description": "List of projects managed by VIT. Each project has its own package.json and can be versioned independently.",
+      "minItems": 1,
       "items": {
         "type": "object",
         "description": "Configuration for an individual project.",
@@ -104,7 +104,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "Unique project identifier. Used in CLI with --projects."
+            "description": "Unique project identifier. Used in CLI with --projects and in built-in variables as ${version.<id>} and ${name.<id>}."
           },
           "label": {
             "type": "string",
@@ -121,21 +121,44 @@
             "default": "v"
           }
         }
-      },
-      "minItems": 1
+      }
+    },
+    "types": {
+      "type": "array",
+      "description": "Customize or extend the commit types available in the changelog. Merged with the default types (feat, fix, refactor, perf, revert, docs, style).",
+      "items": {
+        "type": "object",
+        "description": "A commit type entry.",
+        "additionalProperties": false,
+        "required": ["value"],
+        "properties": {
+          "value": {
+            "type": "string",
+            "description": "Commit type identifier (e.g. 'feat', 'fix', 'deploy')."
+          },
+          "label": {
+            "type": "string",
+            "description": "Label shown as the changelog section header (e.g. '🚀 Features')."
+          },
+          "choiceLabel": {
+            "type": "string",
+            "description": "Label shown in the interactive prompt choice list (e.g. '🚀 feat — New feature')."
+          }
+        }
+      }
     },
     "preActions": {
       "type": "array",
-      "description": "Actions executed BEFORE the main operation (commit or release).",
+      "description": "Actions executed BEFORE the main operation (commit, release or changelog).",
       "items": {
         "$ref": "#/definitions/action"
       }
     },
     "postActions": {
       "type": "array",
-      "description": "Actions executed AFTER the main operation (commit or release).",
+      "description": "Actions executed AFTER the main operation (commit, release or changelog).",
       "items": {
-        "$ref": "#/definitions/pipelineAction"
+        "$ref": "#/definitions/action"
       }
     }
   },
@@ -143,49 +166,80 @@
     "onEvents": {
       "type": "array",
       "description": "Events on which this action is triggered.",
+      "minItems": 1,
       "items": {
         "type": "string",
-        "enum": ["commit", "release"],
-        "description": "'commit' = triggered on regular commits. 'release' = triggered on releases."
-      },
-      "minItems": 1
+        "enum": ["commit", "release", "changelog"],
+        "description": "'commit' = regular commits. 'release' = version bumps. 'changelog' = changelog-only commits."
+      }
     },
-    "action": {
+    "promptEnvEntry": {
       "type": "object",
-      "description": "Action to execute (shell command).",
+      "description": "An environment variable that is asked interactively to the user before the action runs. Has the highest priority over all other env sources.",
       "additionalProperties": false,
-      "required": ["id", "label", "on", "command"],
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the environment variable (e.g. 'SSH_PASS' → available as ${SSH_PASS})."
+        },
+        "message": {
+          "type": "string",
+          "description": "Prompt message shown to the user (e.g. 'SSH password:')."
+        },
+        "validate": {
+          "type": "string",
+          "description": "Built-in validation rule. Currently supported: 'otp' (validates a 6-digit code).",
+          "enum": ["otp"]
+        }
+      }
+    },
+    "pipelineStep": {
+      "type": "object",
+      "description": "A pipeline step that runs a command and optionally captures its stdout as an environment variable.",
+      "additionalProperties": false,
+      "required": ["command"],
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique action identifier."
+          "description": "Unique step identifier."
         },
         "label": {
           "type": "string",
-          "description": "Human-readable action name shown in the interface."
+          "description": "Human-readable step description shown in the spinner."
         },
-        "on": {
-          "$ref": "#/definitions/onEvents"
+        "command": {
+          "type": "string",
+          "description": "Shell command to execute. Its stdout is captured if 'captureAs' is set."
+        },
+        "captureAs": {
+          "type": "string",
+          "description": "Name of the environment variable where stdout is stored (e.g. 'VERSION' → available as ${VERSION} in subsequent steps and the main command)."
+        },
+        "cwd": {
+          "type": "string",
+          "description": "Working directory for this step. Defaults to the parent action's cwd."
         },
         "continueOnError": {
           "type": "boolean",
-          "description": "If true, VIT continues even if this action fails. If false, the operation is aborted.",
+          "description": "If true, the pipeline continues even if this step fails.",
           "default": false
         },
         "showOutput": {
           "type": "boolean",
-          "description": "If true, the command output is printed to the terminal.",
-          "default": true
+          "description": "If true, the step's stdout is printed to the terminal. Default is false for pipeline steps.",
+          "default": false
         },
-        "command": {
-          "type": "string",
-          "description": "Shell command to execute."
+        "timeoutMs": {
+          "type": "number",
+          "description": "Maximum execution time in milliseconds. null means no limit.",
+          "minimum": 1
         }
       }
     },
-    "pipelineAction": {
+    "action": {
       "type": "object",
-      "description": "Post-operation action. Can include a pipeline of steps that capture environment variables.",
+      "description": "An action executed before or after the main VIT operation.",
       "additionalProperties": false,
       "required": ["id", "label", "on", "command"],
       "properties": {
@@ -195,10 +249,19 @@
         },
         "label": {
           "type": "string",
-          "description": "Human-readable action name."
+          "description": "Human-readable action name shown in the spinner."
         },
         "on": {
           "$ref": "#/definitions/onEvents"
+        },
+        "command": {
+          "type": "string",
+          "description": "Shell command to execute. Can interpolate built-in variables (${version}, ${date}, ${branch}...) and variables captured from the pipeline (${VAR_NAME})."
+        },
+        "cwd": {
+          "type": "string",
+          "description": "Working directory for this action. Defaults to the project root. Also determines the value of built-in variables like ${version} and ${name}.",
+          "default": "."
         },
         "continueOnError": {
           "type": "boolean",
@@ -210,37 +273,34 @@
           "description": "If true, the command output is printed to the terminal.",
           "default": true
         },
-        "command": {
+        "timeoutMs": {
+          "type": "number",
+          "description": "Maximum execution time in milliseconds. null means no limit.",
+          "minimum": 1
+        },
+        "envFile": {
           "type": "string",
-          "description": "Shell command to execute (can use variables captured from the pipeline: ${VAR_NAME})."
+          "description": "Path to a .env file specific to this action. Overrides variables from the global envFile with the same name."
+        },
+        "env": {
+          "type": "object",
+          "description": "Static environment variables available to this action. Higher priority than envFile.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "promptEnv": {
+          "type": "array",
+          "description": "Variables asked interactively to the user before running the action. Highest priority over all other env sources. Stops headless execution until input is received.",
+          "items": {
+            "$ref": "#/definitions/promptEnvEntry"
+          }
         },
         "pipeline": {
           "type": "array",
-          "description": "List of preceding steps that capture values into environment variables, available in 'command' as ${VAR_NAME}.",
+          "description": "Steps executed before the main command. Each step can capture its stdout into an environment variable available to subsequent steps and the final command via ${VAR_NAME}.",
           "items": {
-            "type": "object",
-            "description": "Pipeline step that runs a command and captures its output.",
-            "additionalProperties": false,
-            "required": ["id", "command", "captureAs"],
-            "properties": {
-              "id": {
-                "type": "string",
-                "description": "Unique step identifier."
-              },
-              "command": {
-                "type": "string",
-                "description": "Shell command whose standard output (stdout) is captured."
-              },
-              "captureAs": {
-                "type": "string",
-                "description": "Name of the environment variable where the command output is stored (e.g. 'NEW_VERSION' → available as ${NEW_VERSION})."
-              },
-              "continueOnError": {
-                "type": "boolean",
-                "description": "If true, the pipeline continues even if this step fails.",
-                "default": false
-              }
-            }
+            "$ref": "#/definitions/pipelineStep"
           }
         }
       }
