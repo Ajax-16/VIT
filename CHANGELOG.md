@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.0.27] - 28/04/2026
+
+### 🚀 Features
+
+- Added init command to generate a vit-config.json file and its schema
+
+
+
 ## [v-0.0.26] - 28/04/2026
 
 ### 📚 Documentation
