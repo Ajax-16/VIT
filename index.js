@@ -627,6 +627,8 @@ if (accion === "release" || accion === "changelog") {
       }
     }
 
+    let skipChangelog = false;
+
     if (!semanticChangelog && !cli.headless) {
       while (true) {
         const { action } = await inquirer.prompt([
@@ -635,7 +637,7 @@ if (accion === "release" || accion === "changelog") {
             name: "action",
             message: "What to do with the changelog?",
             choices: [
-              { name: "Do nothing", value: "none" },
+              { name: "Nothing", value: "none" },
               { name: "Add new entry", value: "add" },
               { name: "Edit existing version", value: "edit" },
             ],
@@ -643,22 +645,27 @@ if (accion === "release" || accion === "changelog") {
           },
         ]);
 
-        if (action === "none") break;
+        if (action === "none") {
+          skipChangelog = true;
+          break;
+        }
         if (action === "edit") {
           await editChangelog(config);
           changelogDone = true;
           continue;
         }
-        break;
+        break; // "add" → cae a runChangelog
       }
     }
 
-    const result = await runChangelog(config, {
-      headless: cli.headless,
-      pendingTag,
-      semanticChangelog: cli.semantic,
-    });
-    if (result?.saved) changelogDone = true;
+    if (!skipChangelog) {
+      const result = await runChangelog(config, {
+        headless: cli.headless,
+        pendingTag,
+        semanticChangelog: cli.semantic,
+      });
+      if (result?.saved) changelogDone = true;
+    }
   }
 }
 
