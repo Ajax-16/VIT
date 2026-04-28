@@ -1,11 +1,10 @@
 # Changelog
 
-## [v0.0.27] - 28/04/2026
+## [v-0.0.28] - 28/04/2026
 
 ### 🚀 Features
 
-- Added init command to generate a vit-config.json file and its schema
-
+- Added vit-vars, a set of built-in env variables that you can use at anypoint of a vit-config.json file and reduces common used variables implementation complexity
 
 
 ## [v-0.0.26] - 28/04/2026
