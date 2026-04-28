@@ -1,5 +1,14 @@
 # Changelog
 
+## [v-0.0.26] - 28/04/2026
+
+### 📚 Documentation
+
+- update changelog
+
+- translate README to English
+
+
 ## [v-0.0.25] - 27/04/2026
 
 ### 🚀 Features
