@@ -9,6 +9,13 @@
 - implement 4 changelog modes (semantic x headless matrix)
 
 
+### 🐛 Bug fixes
+
+- MODE 3 without pendingTag returns { saved: false } instead of falling back to interactive prompts
+
+- connect runChangelog in index.js and fix MODE 3 test
+
+
 ## [v-0.0.24] - 27/04/2026
 
 ### 🐛 Bug fixes
