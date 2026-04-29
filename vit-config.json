@@ -13,7 +13,7 @@
     "preReleaseBranches": [
       { "name": "beta" },
       { "name": "alpha", "id": "alpha" },
-      { "name": "next",  "id": "rc" }
+      { "name": "next", "id": "rc" }
     ]
   },
   "vcs": {
@@ -46,9 +46,9 @@
       "continueOnError": false,
       "showOutput": true,
       "env": {
-        "URL": "http://${name}.com/${version}"
+        "URL": "https://github.com/Ajax-16/VIT/releases/tag/${last_tag}"
       },
-      "command": "node -e \"console.log('\\n  🎉 Released!\\n  Version  : ${version.vit}\\n  Tag      : ${last_tag}\\n  URL    : ${URL}\\n  Date     : ${date}\\n')\""
+      "command": "node -e \"console.log('\\n  🎉 Released!\\n  Version  : ${version.vit}\\n  Tag      : ${last_tag}\\n  URL      : ${URL}\\n  Date     : ${date}\\n')\""
     }
   ]
 }
