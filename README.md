@@ -539,9 +539,9 @@ VIT exposes a set of built-in variables automatically available in any config st
 
 | Variable              | Value                                      |
 | --------------------- | ------------------------------------------ |
-| `${VIT_BRANCH}`       | Current git branch                         |
-| `${VIT_LAST_TAG}`     | Last git tag                               |
-| `${VIT_VERSION}`      | VIT version                                |
+| `${branch}`           | Current git branch                         |
+| `${last_tag}`         | Last git tag                               |
+| `${version}`          | current project version                                |
 
 ---
 
