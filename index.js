@@ -17,9 +17,10 @@ import { printPreActionsSummary, runPreActions } from "./lib/pre-actions.js";
 import { parseArgs, printHelp, printVersion } from "./lib/cli.js";
 import { runInit } from "./lib/init.js";
 import { promoteMerge, promotePr } from "./lib/promote.js";
+import { runSync } from "./lib/sync.js";
 import semver from "semver";
 
-// ── Parse CLI args ──────────────────────────────────────────────────────────────────
+// ── Parse CLI args ──────────────────────────────────────────────────────────────────────
 const cli = parseArgs();
 
 if (cli.command === "init") {
@@ -38,7 +39,7 @@ if (cli.version) {
 
 const dryRun = cli.dryRun;
 
-// ── Error log helper ────────────────────────────────────────────────────────────────
+// ── Error log helper ────────────────────────────────────────────────────────────────────
 function writeErrorLog(err) {
   const logDir = join(tmpdir(), "vit-logs");
   mkdirSync(logDir, { recursive: true });
@@ -78,7 +79,7 @@ function printError(err) {
   );
 }
 
-// ── Boot banner ───────────────────────────────────────────────────────────────────
+// ── Boot banner ───────────────────────────────────────────────────────────────────────────
 const config = loadVitConfig();
 const vcs = getVcsAdapter(config.vcs?.provider ?? "git");
 const semanticChangelog =
@@ -94,7 +95,6 @@ console.log(
     "  " +
     chalk.dim(`v${version}`) +
     (dryRun ? "  " + chalk.bgYellow.black.bold(" DRY-RUN ") : "") +
-    (cli.headless ? "  " + chalk.bgCyan.black.bold(" HEADLESS ") : "") +
     "\n",
 );
 
@@ -119,14 +119,20 @@ if (dryRun)
         "dry-run — no files, commits, tags or pushes will be made",
       ),
   );
-if (cli.headless)
-  console.log(
-    chalk.dim(`  Mode           : `) +
-      chalk.cyan.bold("headless — running without prompts"),
-  );
 console.log();
 
-// ── Detect if current branch is a prerelease branch ──────────────────────────────
+// ── sync ───────────────────────────────────────────────────────────────────────────────────
+if (cli.command === "sync") {
+  try {
+    await runSync({ config, vcs, dryRun });
+  } catch (err) {
+    printError(err);
+    process.exit(1);
+  }
+  process.exit(0);
+}
+
+// ── Detect if current branch is a prerelease branch ──────────────────────────────────
 const preReleaseBranches = config.git?.preReleaseBranches ?? [];
 
 function matchesPreReleaseBranch(b) {
@@ -151,10 +157,10 @@ const preId = isOnPreReleaseBranch
     : String(matchedPreReleaseBranch?.id ?? matchedPreReleaseBranch?.name ?? "pre")
   : null;
 
-// ── Resolve action ──────────────────────────────────────────────────────────────────
+// ── Resolve action ─────────────────────────────────────────────────────────────────────────
 let accion;
 
-if (cli.headless) {
+if (cli.yes && cli.command) {
   accion = cli.command;
 } else if (cli.command) {
   accion = cli.command;
@@ -178,6 +184,7 @@ if (cli.headless) {
           },
         ]
       : []),
+    { name: "🔄  Sync         — sync prerelease branches with main", value: "sync" },
     { name: "⏪  Rollback     — roll back to a tag", value: "rollback" },
     { name: "❌  Exit", value: "exit" },
   ];
@@ -198,6 +205,16 @@ if (accion === "exit") {
   process.exit(0);
 }
 
+if (accion === "sync") {
+  try {
+    await runSync({ config, vcs, dryRun });
+  } catch (err) {
+    printError(err);
+    process.exit(1);
+  }
+  process.exit(0);
+}
+
 if (
   (accion === "commit" || accion === "rollback") &&
   !vcs.supportsVersioning()
@@ -210,7 +227,7 @@ if (
   process.exit(0);
 }
 
-// ── Branch guard (release only) ─────────────────────────────────────────────────────
+// ── Branch guard (release only) ───────────────────────────────────────────────────────────────
 if (accion === "release" && branch) {
   if (isOnPreReleaseBranch) {
     if (cli.bump && !["prepatch", "preminor", "premajor", "prerelease"].includes(cli.bump)) {
@@ -293,7 +310,7 @@ if (accion === "release" && branch) {
   }
 }
 
-// ── Promote guard ────────────────────────────────────────────────────────────────────
+// ── Promote guard ────────────────────────────────────────────────────────────────────────
 if (accion === "promote") {
   if (!isOnPreReleaseBranch) {
     console.log(
@@ -313,7 +330,7 @@ if (accion === "promote") {
   }
 }
 
-// ── Rollback ─────────────────────────────────────────────────────────────────────────
+// ── Rollback ──────────────────────────────────────────────────────────────────────────────────
 if (accion === "rollback") {
   const tags = vcs.getAllTags();
 
@@ -522,7 +539,7 @@ if (accion === "rollback") {
   process.exit(0);
 }
 
-// ── Release / Commit / Changelog / Promote ───────────────────────────────────────────
+// ── Release / Commit / Changelog / Promote ───────────────────────────────────────────────────
 let bumpResult = null;
 let changelogDone = false;
 let commitMessage = null;
@@ -538,7 +555,7 @@ if (accion === "release" || accion === "promote") {
 
   let targets;
 
-  if (cli.headless) {
+  if (cli.yes) {
     const ids = cli.projects ?? configuredProjects.map((p) => p.id);
     const invalid = ids.filter(
       (id) => !configuredProjects.find((p) => p.id === id),
@@ -551,9 +568,7 @@ if (accion === "release" || accion === "promote") {
     }
     targets = ids;
     console.log(
-      chalk.green(
-        `\n  ✔ Projects : ${targets.join(", ")}\n  ✔ Bump     : ${cli.bump}\n`,
-      ),
+      chalk.green(`\n  ✔ Projects : ${targets.join(", ")}\n`),
     );
   } else if (configuredProjects.length === 1) {
     targets = [configuredProjects[0].id];
@@ -582,7 +597,7 @@ if (accion === "release" || accion === "promote") {
     targets = t.includes("__all__") ? configuredProjects.map((p) => p.id) : t;
   }
 
-  // ── Bump type ──────────────────────────────────────────────────────────────
+  // ── Bump type ──────────────────────────────────────────────────────────────────
   let bumpType;
 
   if (accion === "promote") {
@@ -630,7 +645,7 @@ if (accion === "release" || accion === "promote") {
           process.exit(1);
         }
         bumpType = cli.bump;
-        if (!cli.headless)
+        if (!cli.yes)
           console.log(chalk.dim(`  Bump pre-selected: ${chalk.cyan(bumpType)}\n`));
       } else if (isFirstPrerelease) {
         console.log(
@@ -681,7 +696,7 @@ if (accion === "release" || accion === "promote") {
           process.exit(1);
         }
         bumpType = cli.bump;
-        if (!cli.headless)
+        if (!cli.yes)
           console.log(chalk.dim(`  Bump pre-selected: ${chalk.cyan(bumpType)}\n`));
       } else {
         const ans = await inquirer.prompt([
@@ -702,7 +717,7 @@ if (accion === "release" || accion === "promote") {
     }
 
     bumpResult = { targets, bumpType, preId };
-    if (!cli.headless && accion === "release" && !isOnPreReleaseBranch && !cli.bump)
+    if (!cli.yes && accion === "release" && !isOnPreReleaseBranch && !cli.bump)
       console.log(
         chalk.green(
           `\n  ✔ Bump configured: ${bumpType} → ${targets.join(", ")}\n`,
@@ -711,7 +726,7 @@ if (accion === "release" || accion === "promote") {
   }
 }
 
-// ── Changelog step ─────────────────────────────────────────────────────────────────
+// ── Changelog step ──────────────────────────────────────────────────────────────────────────
 async function runChangelogStep(currentBumpResult) {
   if (dryRun) {
     console.log(
@@ -721,6 +736,11 @@ async function runChangelogStep(currentBumpResult) {
           : "  [dry-run] changelog — skipped in dry-run\n",
       ),
     );
+    return false;
+  }
+
+  // promote with --yes always skips changelog unless --semantic is explicit
+  if (accion === "promote" && cli.yes && !cli.semantic) {
     return false;
   }
 
@@ -749,7 +769,7 @@ async function runChangelogStep(currentBumpResult) {
 
   let skipChangelog = false;
 
-  if (!semanticChangelog && !cli.headless) {
+  if (!semanticChangelog && !cli.yes) {
     while (true) {
       const { action } = await inquirer.prompt([
         {
@@ -779,8 +799,11 @@ async function runChangelogStep(currentBumpResult) {
 
   if (skipChangelog) return false;
 
+  // --yes without --semantic: skip changelog silently
+  if (cli.yes && !cli.semantic) return false;
+
   const result = await runChangelog(config, {
-    headless: cli.headless,
+    yes: cli.yes,
     pendingTag,
     semanticChangelog: cli.semantic,
   });
@@ -800,17 +823,15 @@ if (
   changelogDone = await runChangelogStep(bumpResult);
 }
 
-// ── Commit message ─────────────────────────────────────────────────────────────────
+// ── Commit message ───────────────────────────────────────────────────────────────────────────
 if (accion !== "changelog") {
   const defaultMsg =
     accion === "release" || accion === "promote"
       ? config.git.releaseCommitMessage
       : config.git.defaultCommitMessage;
 
-  if (cli.headless || cli.yes) {
+  if (cli.yes) {
     commitMessage = cli.message ?? defaultMsg;
-    if (!cli.headless)
-      console.log(chalk.dim(`  Message: ${chalk.cyan(commitMessage)}\n`));
   } else if (cli.message) {
     commitMessage = cli.message;
     console.log(
@@ -832,13 +853,12 @@ if (accion !== "changelog") {
   }
 }
 
-// ── Summary ────────────────────────────────────────────────────────────────────────
+// ── Summary ────────────────────────────────────────────────────────────────────────────────────
 console.log("\n" + chalk.bold("  Operation summary:"));
 console.log(chalk.dim("  ─────────────────────────────"));
 console.log(`  Action    : ${chalk.cyan(accion)}`);
 console.log(`  VCS       : ${chalk.cyan(vcsLabel(config.vcs?.provider))}`);
 if (dryRun) console.log(`  Mode      : ${chalk.yellow.bold("dry-run")}`);
-if (cli.headless) console.log(`  Mode      : ${chalk.cyan.bold("headless")}`);
 if (bumpResult) {
   console.log(`  Targets   : ${chalk.cyan(bumpResult.targets.join(", "))}`);
   console.log(`  Bump      : ${chalk.cyan(bumpResult.bumpType)}`);
@@ -869,7 +889,7 @@ printPreActionsSummary(config, accion === "promote" ? "release" : accion);
 printPostActionsSummary(config, accion === "promote" ? "release" : accion);
 console.log();
 
-// ── Confirm & Execute ─────────────────────────────────────────────────────────────
+// ── Confirm & Execute ───────────────────────────────────────────────────────────────────────────
 if (accion === "changelog") {
   if (!vcs.supportsCommit()) {
     console.log(
@@ -936,7 +956,7 @@ if (accion === "changelog") {
   }
 }
 
-// ── Run ───────────────────────────────────────────────────────────────────────────
+// ── Run ─────────────────────────────────────────────────────────────────────────────────────
 try {
   await runPreActions(config, accion === "promote" ? "release" : accion);
 } catch (err) {

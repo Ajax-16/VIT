@@ -20,7 +20,7 @@ jest.unstable_mockModule("child_process", () => ({
 const {
   parseAllTagsWithCommits,
   parseCommitsSinceLastTag,
-  buildSemanticChangelogHeadless,
+  buildSemanticChangelogAuto,
   runChangelog,
 } = await import("../../lib/changelog.js");
 
@@ -160,7 +160,7 @@ describe("parseCommitsSinceLastTag", () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-describe("buildSemanticChangelogHeadless (MODE 4)", () => {
+describe("buildSemanticChangelogAuto (MODE 4)", () => {
   beforeEach(() => {
     mockExecSync.mockReset();
     mockWriteFileSync.mockReset();
@@ -169,7 +169,7 @@ describe("buildSemanticChangelogHeadless (MODE 4)", () => {
 
   test("returns { saved: false } when no tags exist", async () => {
     mockExecSync.mockReturnValue("");
-    const result = await buildSemanticChangelogHeadless(BASE_CONFIG);
+    const result = await buildSemanticChangelogAuto(BASE_CONFIG);
     expect(result.saved).toBe(false);
     expect(mockWriteFileSync).not.toHaveBeenCalled();
   });
@@ -179,7 +179,7 @@ describe("buildSemanticChangelogHeadless (MODE 4)", () => {
       .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
       .mockReturnValueOnce(gitDateOutput())
       .mockReturnValueOnce(gitLogOutput("feat: feature", "fix: bug"));
-    const result = await buildSemanticChangelogHeadless(BASE_CONFIG);
+    const result = await buildSemanticChangelogAuto(BASE_CONFIG);
     expect(result.saved).toBe(true);
     expect(mockWriteFileSync).toHaveBeenCalledTimes(1);
   });
@@ -189,7 +189,7 @@ describe("buildSemanticChangelogHeadless (MODE 4)", () => {
       .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
       .mockReturnValueOnce(gitDateOutput())
       .mockReturnValueOnce(gitLogOutput("feat: a"));
-    await buildSemanticChangelogHeadless(BASE_CONFIG);
+    await buildSemanticChangelogAuto(BASE_CONFIG);
     expect(mockWriteFileSync.mock.calls[0][1]).toMatch(/^# Changelog/);
   });
 
@@ -198,7 +198,7 @@ describe("buildSemanticChangelogHeadless (MODE 4)", () => {
       .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
       .mockReturnValueOnce(gitDateOutput("2024-03-15"))
       .mockReturnValueOnce(gitLogOutput("feat: something"));
-    await buildSemanticChangelogHeadless(BASE_CONFIG);
+    await buildSemanticChangelogAuto(BASE_CONFIG);
     const written = mockWriteFileSync.mock.calls[0][1];
     expect(written).toContain("v1.0.0");
     expect(written).toContain("15/03/2024");
@@ -211,7 +211,7 @@ describe("buildSemanticChangelogHeadless (MODE 4)", () => {
       .mockReturnValueOnce(
         gitLogOutput("feat: thing", "fix: bug", "feat: another"),
       );
-    await buildSemanticChangelogHeadless(BASE_CONFIG);
+    await buildSemanticChangelogAuto(BASE_CONFIG);
     const written = mockWriteFileSync.mock.calls[0][1];
     expect(written).toContain("🚀 Features");
     expect(written).toContain("🐛 Bug fixes");
@@ -226,7 +226,7 @@ describe("buildSemanticChangelogHeadless (MODE 4)", () => {
       .mockReturnValueOnce(gitLogOutput("feat: pending"))
       .mockReturnValueOnce(gitDateOutput())
       .mockReturnValueOnce(gitLogOutput("feat: initial"));
-    await buildSemanticChangelogHeadless(BASE_CONFIG, { pendingTag: "v1.1.0" });
+    await buildSemanticChangelogAuto(BASE_CONFIG, { pendingTag: "v1.1.0" });
     const written = mockWriteFileSync.mock.calls[0][1];
     expect(written.indexOf("v1.1.0")).toBeLessThan(written.indexOf("v1.0.0"));
   });
@@ -240,7 +240,7 @@ describe("buildSemanticChangelogHeadless (MODE 4)", () => {
       .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
       .mockReturnValueOnce(gitDateOutput())
       .mockReturnValueOnce(gitLogOutput("feat: x"));
-    await buildSemanticChangelogHeadless(cfg);
+    await buildSemanticChangelogAuto(cfg);
     expect(mockWriteFileSync.mock.calls[0][1]).toContain("# My Log");
   });
 });
@@ -253,23 +253,24 @@ describe("runChangelog dispatch", () => {
     mockExistsSync.mockReturnValue(false);
   });
 
-  test("MODE 2: non-semantic headless → does NOT write file", async () => {
-    await runChangelog(MANUAL_CONFIG, { headless: true });
+  test("MODE 2: non-semantic --yes → does NOT write file", async () => {
+    await runChangelog(MANUAL_CONFIG, { yes: true });
     expect(mockWriteFileSync).not.toHaveBeenCalled();
   });
 
-  test("MODE 4: semantic headless with tags → writes file", async () => {
+  test("MODE 4: semantic --yes with tags → writes file", async () => {
     mockExecSync
       .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
       .mockReturnValueOnce(gitDateOutput())
       .mockReturnValueOnce(gitLogOutput("feat: auto"));
-    await runChangelog(BASE_CONFIG, { headless: true });
+    await runChangelog(BASE_CONFIG, { yes: true });
     expect(mockWriteFileSync).toHaveBeenCalledTimes(1);
   });
 
-  test("MODE 3: semantic interactive without pendingTag → writes file", async () => {
+  test("MODE 3: semantic non-interactive without pendingTag → returns { saved: false } (no write)", async () => {
+    mockExecSync.mockReturnValue(""); // no tags → buildSemanticChangelogAuto returns saved:false
     const result = await runChangelog(BASE_CONFIG, {
-      headless: false,
+      yes: false,
       pendingTag: undefined,
     });
     expect(result).toMatchObject({ saved: false });
