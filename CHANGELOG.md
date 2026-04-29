@@ -1,5 +1,12 @@
 # Changelog
 
+## [v-0.0.35] - 29/04/2026
+
+### 🐛 Bug fixes
+
+- *(sync)* pull release branches before comparing/merging so local refs are up to date
+
+
 ## [v-0.0.34] - 29/04/2026
 
 ### 🚀 Features

@@ -1,6 +1,6 @@
 {
   "name": "@ajax-16/vit",
-  "version": "0.0.35-alpha.0",
+  "version": "0.0.35",
   "description": "Interactive CLI to manage versions, changelogs and deployments — monorepo ready",
   "keywords": [
     "cli",
