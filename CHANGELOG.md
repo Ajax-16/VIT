@@ -1,5 +1,17 @@
 # Changelog
 
+## [v-0.0.33] - 29/04/2026
+
+### 🚀 Features
+
+- update existing PR title and body when reusing it on promote
+
+
+### 🐛 Bug fixes
+
+- Making vit-vars usefull again
+
+
 ## [v-0.0.32] - 29/04/2026
 
 ### 🚀 Features
