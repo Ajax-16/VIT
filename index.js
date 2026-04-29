@@ -95,7 +95,6 @@ console.log(
     "  " +
     chalk.dim(`v${version}`) +
     (dryRun ? "  " + chalk.bgYellow.black.bold(" DRY-RUN ") : "") +
-    (cli.headless ? "  " + chalk.bgCyan.black.bold(" HEADLESS ") : "") +
     "\n",
 );
 
@@ -119,11 +118,6 @@ if (dryRun)
       chalk.yellow.bold(
         "dry-run — no files, commits, tags or pushes will be made",
       ),
-  );
-if (cli.headless)
-  console.log(
-    chalk.dim(`  Mode           : `) +
-      chalk.cyan.bold("headless — running without prompts"),
   );
 console.log();
 
@@ -166,7 +160,7 @@ const preId = isOnPreReleaseBranch
 // ── Resolve action ─────────────────────────────────────────────────────────────────────────
 let accion;
 
-if (cli.headless) {
+if (cli.yes && cli.command) {
   accion = cli.command;
 } else if (cli.command) {
   accion = cli.command;
@@ -211,7 +205,6 @@ if (accion === "exit") {
   process.exit(0);
 }
 
-// Handle sync from interactive menu
 if (accion === "sync") {
   try {
     await runSync({ config, vcs, dryRun });
@@ -562,7 +555,7 @@ if (accion === "release" || accion === "promote") {
 
   let targets;
 
-  if (cli.headless) {
+  if (cli.yes) {
     const ids = cli.projects ?? configuredProjects.map((p) => p.id);
     const invalid = ids.filter(
       (id) => !configuredProjects.find((p) => p.id === id),
@@ -575,9 +568,7 @@ if (accion === "release" || accion === "promote") {
     }
     targets = ids;
     console.log(
-      chalk.green(
-        `\n  ✔ Projects : ${targets.join(", ")}\n  ✔ Bump     : ${cli.bump}\n`,
-      ),
+      chalk.green(`\n  ✔ Projects : ${targets.join(", ")}\n`),
     );
   } else if (configuredProjects.length === 1) {
     targets = [configuredProjects[0].id];
@@ -654,7 +645,7 @@ if (accion === "release" || accion === "promote") {
           process.exit(1);
         }
         bumpType = cli.bump;
-        if (!cli.headless)
+        if (!cli.yes)
           console.log(chalk.dim(`  Bump pre-selected: ${chalk.cyan(bumpType)}\n`));
       } else if (isFirstPrerelease) {
         console.log(
@@ -705,7 +696,7 @@ if (accion === "release" || accion === "promote") {
           process.exit(1);
         }
         bumpType = cli.bump;
-        if (!cli.headless)
+        if (!cli.yes)
           console.log(chalk.dim(`  Bump pre-selected: ${chalk.cyan(bumpType)}\n`));
       } else {
         const ans = await inquirer.prompt([
@@ -726,7 +717,7 @@ if (accion === "release" || accion === "promote") {
     }
 
     bumpResult = { targets, bumpType, preId };
-    if (!cli.headless && accion === "release" && !isOnPreReleaseBranch && !cli.bump)
+    if (!cli.yes && accion === "release" && !isOnPreReleaseBranch && !cli.bump)
       console.log(
         chalk.green(
           `\n  ✔ Bump configured: ${bumpType} → ${targets.join(", ")}\n`,
@@ -748,8 +739,8 @@ async function runChangelogStep(currentBumpResult) {
     return false;
   }
 
-  // promote with --yes or headless always skips changelog unless --semantic is explicit
-  if (accion === "promote" && (cli.yes || cli.headless) && !cli.semantic) {
+  // promote with --yes always skips changelog unless --semantic is explicit
+  if (accion === "promote" && cli.yes && !cli.semantic) {
     return false;
   }
 
@@ -778,7 +769,7 @@ async function runChangelogStep(currentBumpResult) {
 
   let skipChangelog = false;
 
-  if (!semanticChangelog && !cli.headless && !cli.yes) {
+  if (!semanticChangelog && !cli.yes) {
     while (true) {
       const { action } = await inquirer.prompt([
         {
@@ -808,11 +799,11 @@ async function runChangelogStep(currentBumpResult) {
 
   if (skipChangelog) return false;
 
-  // If --yes without --semantic, skip changelog silently
+  // --yes without --semantic: skip changelog silently
   if (cli.yes && !cli.semantic) return false;
 
   const result = await runChangelog(config, {
-    headless: cli.headless,
+    yes: cli.yes,
     pendingTag,
     semanticChangelog: cli.semantic,
   });
@@ -839,10 +830,8 @@ if (accion !== "changelog") {
       ? config.git.releaseCommitMessage
       : config.git.defaultCommitMessage;
 
-  if (cli.headless || cli.yes) {
+  if (cli.yes) {
     commitMessage = cli.message ?? defaultMsg;
-    if (!cli.headless)
-      console.log(chalk.dim(`  Message: ${chalk.cyan(commitMessage)}\n`));
   } else if (cli.message) {
     commitMessage = cli.message;
     console.log(
@@ -870,7 +859,6 @@ console.log(chalk.dim("  ──────────────────�
 console.log(`  Action    : ${chalk.cyan(accion)}`);
 console.log(`  VCS       : ${chalk.cyan(vcsLabel(config.vcs?.provider))}`);
 if (dryRun) console.log(`  Mode      : ${chalk.yellow.bold("dry-run")}`);
-if (cli.headless) console.log(`  Mode      : ${chalk.cyan.bold("headless")}`);
 if (bumpResult) {
   console.log(`  Targets   : ${chalk.cyan(bumpResult.targets.join(", "))}`);
   console.log(`  Bump      : ${chalk.cyan(bumpResult.bumpType)}`);
