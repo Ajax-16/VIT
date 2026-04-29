@@ -2,7 +2,7 @@
   "changelog": {
     "path": "./CHANGELOG.md",
     "title": "Changelog",
-    "semantic": false
+    "semantic": true
   },
   "git": {
     "defaultCommitMessage": "chore: update",
@@ -50,6 +50,12 @@
         "URL": "https://github.com/Ajax-16/VIT/releases/tag/${last_tag}"
       },
       "command": "node -e \"console.log('\\n  🎉 Released!\\n  Version  : ${version.vit}\\n  Tag      : ${last_tag}\\n  URL      : ${URL}\\n  Date     : ${date}\\n')\""
+    },
+    {
+      "id": "npm-publish",
+      "label": "Publish to npm",
+      "on": ["release"],
+      "command": "npm publish --access public"
     }
   ]
 }
