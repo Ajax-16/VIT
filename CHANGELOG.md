@@ -1,5 +1,17 @@
 # Changelog
 
+## [v-0.0.32] - 29/04/2026
+
+### 🚀 Features
+
+- interpolate ${VAR} placeholders across all config string values
+
+
+### 🐛 Bug fixes
+
+- reuse existing open PR instead of creating a duplicate on promote
+
+
 ## [v-0.0.31] - 29/04/2026
 
 ### 🚀 Features
