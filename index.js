@@ -16,6 +16,7 @@ import { printPostActionsSummary, runPostActions } from "./lib/post-actions.js";
 import { printPreActionsSummary, runPreActions } from "./lib/pre-actions.js";
 import { parseArgs, printHelp, printVersion } from "./lib/cli.js";
 import { runInit } from "./lib/init.js";
+import { promoteMerge, promotePr } from "./lib/promote.js";
 import semver from "semver";
 
 // ── Parse CLI args ──────────────────────────────────────────────────────────────────
@@ -83,6 +84,7 @@ const vcs = getVcsAdapter(config.vcs?.provider ?? "git");
 const semanticChangelog =
   config.changelog?.semantic === true || cli.semantic === true;
 const rollbackStrategy = config.git?.rollbackStrategy ?? "revert";
+const promoteStrategy = config.git?.promoteStrategy ?? "merge";
 
 console.log(
   "\n" +
@@ -143,7 +145,6 @@ function matchesPreReleaseBranch(b) {
 const matchedPreReleaseBranch = branch ? matchesPreReleaseBranch(branch) : null;
 const isOnPreReleaseBranch = matchedPreReleaseBranch !== null;
 
-// preId is always a plain string used as --preid value (e.g. "alpha")
 const preId = isOnPreReleaseBranch
   ? typeof matchedPreReleaseBranch === "string"
     ? matchedPreReleaseBranch
@@ -169,7 +170,10 @@ if (cli.headless) {
     ...(isOnPreReleaseBranch
       ? [
           {
-            name: "⏫  Promote      — merge into main + stable release",
+            name:
+              "⏫  Promote      — " +
+              (promoteStrategy === "pr" ? "open PR to" : "merge into") +
+              " main + stable release",
             value: "promote",
           },
         ]
@@ -599,10 +603,7 @@ if (accion === "release" || accion === "promote") {
     }
     bumpResult = { targets, bumpType, preId: null };
   } else {
-    // accion === "release"
     if (isOnPreReleaseBranch) {
-      // Detect if already in a prerelease cycle for this branch:
-      // the package.json version has preId as one of its prerelease identifiers.
       let isFirstPrerelease = true;
       const sample = configuredProjects.find((p) => targets.includes(p.id));
       if (sample && preId) {
@@ -611,7 +612,6 @@ if (accion === "release" || accion === "promote") {
             readFileSync(resolve(sample.path, "package.json"), "utf-8"),
           );
           const parsed = semver.parse(pkg.version);
-          // prerelease is an array like ["alpha", 0] — check for string match
           isFirstPrerelease =
             !parsed ||
             parsed.prerelease.length === 0 ||
@@ -662,7 +662,6 @@ if (accion === "release" || accion === "promote") {
         ]);
         bumpType = ans.bumpType;
       } else {
-        // Already in this prerelease cycle — just iterate the numeric suffix
         bumpType = "prerelease";
         console.log(
           chalk.dim(
@@ -712,7 +711,7 @@ if (accion === "release" || accion === "promote") {
   }
 }
 
-// ── Changelog step (shared by release, changelog, promote) ───────────────────────────
+// ── Changelog step ─────────────────────────────────────────────────────────────────
 async function runChangelogStep(currentBumpResult) {
   if (dryRun) {
     console.log(
@@ -846,7 +845,10 @@ if (bumpResult) {
 }
 if (accion === "promote") {
   const targetBranch = cli.target ?? config.git.releaseBranches?.[0] ?? "main";
-  console.log(`  Merge into: ${chalk.cyan(targetBranch)}`);
+  console.log(
+    `  Promote   : ${chalk.cyan(branch)} → ${chalk.cyan(targetBranch)}  ` +
+      chalk.dim(`[strategy: ${promoteStrategy}]`),
+  );
 }
 if (commitMessage) console.log(`  Message   : ${chalk.cyan(commitMessage)}`);
 console.log(
@@ -981,44 +983,25 @@ try {
     }
   } else if (accion === "promote") {
     const targetBranch = cli.target ?? config.git.releaseBranches?.[0] ?? "main";
+    const promoteArgs = {
+      branch,
+      targetBranch,
+      bumpResult,
+      commitMessage,
+      config,
+      vcs,
+      dryRun,
+      spinner,
+    };
 
-    if (dryRun) {
-      spinner.succeed(chalk.yellow("Dry-run completed — no changes made."));
+    const result =
+      promoteStrategy === "pr"
+        ? await promotePr(promoteArgs)
+        : await promoteMerge(promoteArgs);
+
+    if (!dryRun) {
       console.log();
-      console.log(
-        chalk.dim(`  [dry-run] merge  : ${branch} → ${targetBranch} (not executed)`),
-      );
-      console.log(
-        chalk.dim(`  [dry-run] bump   : promote (strip suffix) on ${bumpResult.targets.join(", ")} (not executed)`),
-      );
-      console.log(chalk.dim(`  [dry-run] push   : skipped`));
-    } else {
-      const mergeSpinner = ora({
-        text: `Merging ${branch} into ${targetBranch}...`,
-        color: "cyan",
-      }).start();
-
-      vcs.checkout(targetBranch);
-      vcs.mergeFromBranch(branch);
-
-      mergeSpinner.succeed(
-        chalk.green(`Merged ${branch} into ${targetBranch}.`),
-      );
-
-      const result = await bump({
-        targets: bumpResult.targets,
-        bumpType: "promote",
-        message: commitMessage,
-        preId: null,
-        config,
-        vcs,
-        dryRun: false,
-      });
-
-      spinner.succeed(chalk.green("Promotion completed successfully!"));
-      console.log();
-
-      for (const item of result.bumpedProjects) {
+      for (const item of result.bumpedProjects ?? []) {
         console.log(
           `  ${item.label.padEnd(12)}: ${chalk.cyan("v" + item.version)}`,
         );
@@ -1026,11 +1009,11 @@ try {
       if (result.tag) {
         console.log(`  Tag         : ${chalk.cyan(result.tag)}`);
       }
-
-      vcs.checkout(branch);
-      console.log(
-        chalk.dim(`\n  Returned to branch ${chalk.cyan(branch)}.\n`),
-      );
+      if (result.prUrl) {
+        console.log(
+          `  PR          : ${chalk.cyan.underline(result.prUrl)}`,
+        );
+      }
     }
   } else if (!dryRun) {
     vcs.addAll();
