@@ -1,5 +1,45 @@
 # Changelog
 
+## [v-0.0.33] - 29/04/2026
+
+### 🚀 Features
+
+- update existing PR title and body when reusing it on promote
+
+
+### 🐛 Bug fixes
+
+- Making vit-vars usefull again
+
+
+## [v-0.0.32] - 29/04/2026
+
+### 🚀 Features
+
+- interpolate ${VAR} placeholders across all config string values
+
+
+### 🐛 Bug fixes
+
+- reuse existing open PR instead of creating a duplicate on promote
+
+
+## [v-0.0.31] - 29/04/2026
+
+### 🚀 Features
+
+- interpolate ${VAR} placeholders in config values using process.env
+
+- Added merge strategy options in promotion (merge or pull request) | restore vit-config with github token interpolation
+
+- promote strategy — merge (local) or pr (GitHub API)
+
+
+### 🐛 Bug fixes
+
+- load envFile before interpolating config values so ${VAR} placeholders resolve correctly
+
+
 ## [v-0.0.30] - 29/04/2026
 
 ### 🚀 Features
