@@ -33,7 +33,7 @@
     {
       "id": "testing",
       "label": "Tests execution",
-      "on": ["commit", "release"],
+      "on": ["commit", "prerelease", "release"],
       "continueOnError": false,
       "showOutput": true,
       "command": "npm run test"
@@ -43,7 +43,7 @@
     {
       "id": "release-summary",
       "label": "Release summary",
-      "on": ["release"],
+      "on": ["prerelease", "release"],
       "continueOnError": false,
       "showOutput": true,
       "env": {

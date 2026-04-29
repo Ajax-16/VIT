@@ -212,8 +212,8 @@
       "minItems": 1,
       "items": {
         "type": "string",
-        "enum": ["commit", "release", "changelog"],
-        "description": "'commit' = regular commits. 'release' = version bumps. 'changelog' = changelog-only commits."
+        "enum": ["commit", "release", "changelog", "prerelease"],
+        "description": "'commit' = regular commits. 'release' = version bumps. 'changelog' = changelog-only commits. 'prerelease' = pre-release commits. Note: 'prerelease' is only triggered when git.preReleaseBranches is configured and the current branch matches one of those branches."
       }
     },
     "promptEnvEntry": {
