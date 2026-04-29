@@ -92,6 +92,28 @@
           "description": "'revert' creates a new commit that undoes changes (history preserved, recommended). 'reset' rewrites history (requires force push, use only on personal repos).",
           "enum": ["revert", "reset"],
           "default": "revert"
+        },
+        "promoteStrategy": {
+          "type": "string",
+          "description": "Strategy used when promoting a prerelease branch to stable. 'merge' performs a local merge into the target branch and syncs both branches. 'pr' bumps the stable version on the prerelease branch, pushes it, and opens a GitHub Pull Request — requires config.github.token (or GITHUB_TOKEN env) and config.github.repo.",
+          "enum": ["merge", "pr"],
+          "default": "merge"
+        }
+      }
+    },
+    "github": {
+      "type": "object",
+      "description": "GitHub API settings. Required when git.promoteStrategy is 'pr'.",
+      "additionalProperties": false,
+      "properties": {
+        "token": {
+          "type": "string",
+          "description": "GitHub personal access token or GITHUB_TOKEN. The GITHUB_TOKEN environment variable takes precedence over this value."
+        },
+        "repo": {
+          "type": "string",
+          "description": "Repository slug in 'owner/repo' format (e.g. 'my-org/my-repo'). Auto-detected from git remote origin when omitted.",
+          "pattern": "^[^/]+/[^/]+$"
         }
       }
     },
