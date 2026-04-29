@@ -16,7 +16,7 @@ jest.unstable_mockModule('child_process', () => ({
   spawn:    jest.fn(),
 }));
 
-const { getNextVersion, bump } = await import('../../lib/bump.js');
+const { getNextVersion, bump, resolveActionsTrigger } = await import('../../lib/bump.js');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function makePkg(version) {
@@ -55,6 +55,57 @@ describe('getNextVersion (pure)', () => {
     ['1.0.0', 'minor',  '1.1.0'],
   ])('%s + %s → %s', (current, type, expected) => {
     expect(getNextVersion(current, type)).toBe(expected);
+  });
+
+  test('promote strips prerelease suffix', () => {
+    expect(getNextVersion('1.1.0-alpha.3', 'promote')).toBe('1.1.0');
+  });
+
+  test('promote throws on unparseable version', () => {
+    expect(() => getNextVersion('not-a-version', 'promote')).toThrow();
+  });
+
+  test('prepatch generates pre version', () => {
+    expect(getNextVersion('1.2.3', 'prepatch', 'alpha')).toBe('1.2.4-alpha.0');
+  });
+
+  test('preminor generates pre version', () => {
+    expect(getNextVersion('1.2.3', 'preminor', 'beta')).toBe('1.3.0-beta.0');
+  });
+
+  test('premajor generates pre version', () => {
+    expect(getNextVersion('1.2.3', 'premajor', 'rc')).toBe('2.0.0-rc.0');
+  });
+
+  test('prerelease iterates existing pre suffix', () => {
+    expect(getNextVersion('1.2.3-alpha.0', 'prerelease', 'alpha')).toBe('1.2.3-alpha.1');
+  });
+
+  test('stable bump on prerelease version strips suffix instead of bumping', () => {
+    expect(getNextVersion('1.1.0-alpha.3', 'patch')).toBe('1.1.0');
+    expect(getNextVersion('1.1.0-alpha.3', 'minor')).toBe('1.1.0');
+    expect(getNextVersion('1.1.0-alpha.3', 'major')).toBe('1.1.0');
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+describe('resolveActionsTrigger (pure)', () => {
+  test.each([
+    ['prepatch',   'prerelease'],
+    ['preminor',   'prerelease'],
+    ['premajor',   'prerelease'],
+    ['prerelease', 'prerelease'],
+  ])('%s → "prerelease"', (bumpType, expected) => {
+    expect(resolveActionsTrigger(bumpType)).toBe(expected);
+  });
+
+  test.each([
+    ['patch',   'release'],
+    ['minor',   'release'],
+    ['major',   'release'],
+    ['promote', 'release'],
+  ])('%s → "release"', (bumpType, expected) => {
+    expect(resolveActionsTrigger(bumpType)).toBe(expected);
   });
 });
 
@@ -118,9 +169,7 @@ describe('bump()', () => {
   // ──────────────────────────────────────────────────────────────────────────
   describe('live mode with vcs', () => {
     beforeEach(() => {
-      // execSync simulates npm version writing the new version
       mockExecSync.mockImplementation(() => '');
-      // readFileSync is called by getVersion after npm version ran
       mockReadFileSync.mockReturnValue(makePkg('1.2.4'));
     });
 
@@ -169,7 +218,6 @@ describe('bump()', () => {
 
     beforeEach(() => {
       mockExecSync.mockImplementation(() => '');
-      // readFileSync returns different versions per call
       mockReadFileSync
         .mockReturnValueOnce(makePkg('2.0.0'))
         .mockReturnValueOnce(makePkg('1.5.3'));

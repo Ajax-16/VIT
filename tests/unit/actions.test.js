@@ -16,7 +16,6 @@ jest.unstable_mockModule("fs", () => ({
   writeFileSync: jest.fn(),
 }));
 
-// pipeline & vit-vars & vcs are pulled in transitively — mock the heavy ones
 jest.unstable_mockModule("../../lib/pipeline.js", () => ({
   runSteps:          jest.fn().mockResolvedValue({}),
   printStepsSummary: jest.fn(),
@@ -164,6 +163,10 @@ describe("isValidTrigger", () => {
     expect(isValidTrigger(t)).toBe(true);
   });
 
+  test("'prerelease' is a valid trigger", () => {
+    expect(isValidTrigger("prerelease")).toBe(true);
+  });
+
   test("unknown trigger returns false", () => {
     expect(isValidTrigger("deploy")).toBe(false);
     expect(isValidTrigger("")).toBe(false);
@@ -182,9 +185,29 @@ describe("getApplicableActions", () => {
     expect(getApplicableActions([base], "commit")).toEqual([]);
   });
 
-  test("returns matching actions", () => {
+  test("returns matching actions for 'release'", () => {
     const result = getApplicableActions([base], "release");
     expect(result).toHaveLength(1);
+  });
+
+  test("action with on=['prerelease'] fires on prerelease trigger", () => {
+    const preAction = { command: "echo pre", enabled: true, on: ["prerelease"] };
+    expect(getApplicableActions([preAction], "prerelease")).toHaveLength(1);
+  });
+
+  test("action with on=['prerelease'] does NOT fire on release trigger", () => {
+    const preAction = { command: "echo pre", enabled: true, on: ["prerelease"] };
+    expect(getApplicableActions([preAction], "release")).toHaveLength(0);
+  });
+
+  test("action with on=['release'] does NOT fire on prerelease trigger", () => {
+    expect(getApplicableActions([base], "prerelease")).toHaveLength(0);
+  });
+
+  test("action with on=['release','prerelease'] fires on both triggers", () => {
+    const both = { command: "echo both", enabled: true, on: ["release", "prerelease"] };
+    expect(getApplicableActions([both], "release")).toHaveLength(1);
+    expect(getApplicableActions([both], "prerelease")).toHaveLength(1);
   });
 
   test("filters out disabled actions", () => {
@@ -207,6 +230,16 @@ describe("getApplicableActions", () => {
 describe("validateActions", () => {
   test("does not throw for valid triggers", () => {
     const actions = [normalizeAction({ command: "x", on: ["release"] }, 0)];
+    expect(() => validateActions(actions)).not.toThrow();
+  });
+
+  test("does not throw for 'prerelease' trigger", () => {
+    const actions = [normalizeAction({ command: "x", on: ["prerelease"] }, 0)];
+    expect(() => validateActions(actions)).not.toThrow();
+  });
+
+  test("does not throw for combined release + prerelease", () => {
+    const actions = [normalizeAction({ command: "x", on: ["release", "prerelease"] }, 0)];
     expect(() => validateActions(actions)).not.toThrow();
   });
 
