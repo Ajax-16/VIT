@@ -8,7 +8,7 @@ import { join, resolve } from "path";
 import inquirer from "inquirer";
 import chalk from "chalk";
 import ora from "ora";
-import { bump, getNextVersion } from "./lib/bump.js";
+import { bump, getNextVersion, resolveActionsTrigger } from "./lib/bump.js";
 import { runChangelog, editChangelog } from "./lib/changelog.js";
 import { loadVitConfig, checkReleaseBranch } from "./lib/config.js";
 import { getVcsAdapter, vcsLabel } from "./lib/vcs/index.js";
@@ -853,6 +853,16 @@ if (accion !== "changelog") {
   }
 }
 
+// ── Resolve the actions trigger based on bumpType ────────────────────────────────────────
+// accion "release" can be either a prerelease or a stable release depending on bumpType.
+// accion "promote" and "commit" always map to "release" and "commit" respectively.
+const actionsTrigger =
+  accion === "release" && bumpResult
+    ? resolveActionsTrigger(bumpResult.bumpType)
+    : accion === "promote"
+      ? "release"
+      : accion; // "commit" | "changelog"
+
 // ── Summary ────────────────────────────────────────────────────────────────────────────────────
 console.log("\n" + chalk.bold("  Operation summary:"));
 console.log(chalk.dim("  ─────────────────────────────"));
@@ -884,8 +894,8 @@ console.log(
   }`,
 );
 
-printPreActionsSummary(config, accion === "promote" ? "release" : accion);
-printPostActionsSummary(config, accion === "promote" ? "release" : accion);
+printPreActionsSummary(config, actionsTrigger);
+printPostActionsSummary(config, actionsTrigger);
 console.log();
 
 // ── Confirm & Execute ───────────────────────────────────────────────────────────────────────────
@@ -957,7 +967,7 @@ if (accion === "changelog") {
 
 // ── Run ─────────────────────────────────────────────────────────────────────────────────────
 try {
-  await runPreActions(config, accion === "promote" ? "release" : accion);
+  await runPreActions(config, actionsTrigger);
 } catch (err) {
   printError(err);
   process.exit(1);
@@ -1047,7 +1057,7 @@ try {
     );
   }
 
-  await runPostActions(config, accion === "promote" ? "release" : accion);
+  await runPostActions(config, actionsTrigger);
 } catch (err) {
   spinner.fail(chalk.red("Error during execution"));
   printError(err);
