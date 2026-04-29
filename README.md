@@ -583,7 +583,7 @@ VIT allows you to run commands automatically before (`preActions`) and after (`p
 | ----------------- | ---------- | ------------- | -------------------------------------------------------------------------------- |
 | `id`              | `string`   | auto          | Unique identifier                                                                |
 | `label`           | `string`   | `command`     | Text shown in the spinner                                                        |
-| `on`              | `string[]` | `["release"]` | Triggers: `release`, `commit`, `changelog`                                       |
+| `on`              | `string[]` | `["release"]` | Triggers: `release`, `commit`, `changelog`, `prerelease`                         |
 | `cwd`             | `string`   | `.`           | Working directory for the command                                                |
 | `continueOnError` | `boolean`  | `false`       | If `true`, an error doesn't stop execution                                       |
 | `showOutput`      | `boolean`  | `true`        | Show stdout/stderr in real time                                                  |
@@ -596,11 +596,12 @@ VIT allows you to run commands automatically before (`preActions`) and after (`p
 
 ### Available triggers
 
-| Trigger     | When it runs                 |
-| ----------- | ---------------------------- |
-| `release`   | When bumping the version     |
-| `commit`    | When committing without bump |
-| `changelog` | When committing a changelog  |
+| Trigger     | When it runs                           |
+| ----------- | -------------------------------------- |
+| `release`   | When bumping the version               |
+| `prerelease`| When bumping the a prerelease version  |
+| `commit`    | When committing without bump           |
+| `changelog` | When committing a changelog            |
 
 ### `promptEnv`
 
