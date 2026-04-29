@@ -1,5 +1,31 @@
 # Changelog
 
+## [v-0.0.34] - 29/04/2026
+
+### 🚀 Features
+
+- wire vit sync command in index.js
+
+- add vit sync command to detect and fix branches behind release branches
+
+- safer promoteMerge with pre-flight checks and rollback on failure
+
+
+### 🐛 Bug fixes
+
+- skip changelog step on promote when --yes or headless
+
+
+### 🚜 Refactoring
+
+- consolidate --headless into --yes, remove headless flag
+
+
+### 📚 Documentation
+
+- update README to reflect all alpha changes (promote, sync, prerelease, promoteStrategy, ${VAR} interpolation, --yes consolidation)
+
+
 ## [v-0.0.33] - 29/04/2026
 
 ### 🚀 Features
