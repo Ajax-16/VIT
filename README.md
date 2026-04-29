@@ -66,7 +66,7 @@ To enable it manually in an existing project, add this to your `.vscode/settings
 
 ## Usage
 
-Run `vit` at the root of your project. VIT will look for a `vit-config.json` file in the current directory. If it doesn't exist, it will use the default configuration.
+Run `vit` at the root of your project. VIT will look for a `vit-config.json` file in the current directory.
 
 ```
   VIT   Version It!  v1.0.0
@@ -79,24 +79,30 @@ Run `vit` at the root of your project. VIT will look for a `vit-config.json` fil
   🚀  Version it!  — bump + changelog + commit
   📋  Changelog    — add or edit entries
   💾  Commit       — commit and push without bump
+  ⏫  Promote      — merge into main + stable release
+  🔄  Sync         — sync prerelease branches with main
   ⏪  Rollback     — roll back to a tag
   ❌  Exit
 ```
 
+> **Note:** `Promote` and `Sync` only appear in the interactive menu when relevant (promote requires being on a prerelease branch).
+
 ### Available actions
 
-| Action          | Description                                    |
-| --------------- | ---------------------------------------------- |
-| **Version it!** | Version bump + changelog + commit + tag + push |
-| **Changelog**   | Add or edit changelog entries without bumping  |
-| **Commit**      | Commit and push without modifying versions     |
-| **Rollback**    | Revert the repository to a previous tag        |
+| Action          | Description                                              |
+| --------------- | -------------------------------------------------------- |
+| **Version it!** | Version bump + changelog + commit + tag + push           |
+| **Changelog**   | Add or edit changelog entries without bumping            |
+| **Commit**      | Commit and push without modifying versions               |
+| **Promote**     | Promote a prerelease branch into a stable release        |
+| **Sync**        | Sync prerelease branches that are behind their base      |
+| **Rollback**    | Revert the repository to a previous tag                  |
 
 ---
 
 ## CLI Arguments
 
-You can pass arguments directly when running `vit` to skip steps in the interactive flow. Prompts that already have a value from an argument are skipped; the rest continue normally.
+You can pass arguments directly when running `vit` to skip steps in the interactive flow.
 
 ```bash
 vit [command] [options]
@@ -104,43 +110,65 @@ vit [command] [options]
 
 ### Commands
 
-| Command     | Description                  |
-| ----------- | ---------------------------- |
-| `release`   | Run the release flow         |
-| `commit`    | Run a commit without bumping |
-| `changelog` | Open the changelog flow      |
-| `rollback`  | Revert to a previous tag     |
+| Command     | Alias | Description                                                    |
+| ----------- | ----- | -------------------------------------------------------------- |
+| `release`   | `r`   | Run the release flow                                           |
+| `commit`    | `c`   | Run a commit without bumping                                   |
+| `changelog` | `cl`  | Open the changelog flow                                        |
+| `rollback`  | `rb`  | Revert to a previous tag                                       |
+| `promote`   | `pr`  | Promote prerelease branch into stable release                  |
+| `sync`      | `sy`  | Sync prerelease branches that are behind their release branch  |
 
 ### Options
 
-| Option             | Alias | Description                                                      |
-| ------------------ | ----- | ---------------------------------------------------------------- |
-| `--bump <type>`    | `-b`  | Bump type: `patch`, `minor` or `major`                           |
-| `--message <msg>`  | `-m`  | Commit message                                                   |
-| `--tag <tag>`      | `-t`  | Target tag for rollback                                          |
-| `--projects <ids>` | `-p`  | Comma-separated project IDs (monorepo)                           |
-| `--semantic`       | `-s`  | Enable semantic changelog mode                                   |
-| `--yes`            | `-y`  | Confirm everything automatically without prompts (headless mode) |
-| `--dry-run`        | `-d`  | Simulate the operation without writing or pushing                |
-| `--version`        | `-v`  | Show VIT version                                                 |
-| `--help`           | `-h`  | Show help                                                        |
+| Option             | Alias | Description                                                                     |
+| ------------------ | ----- | ------------------------------------------------------------------------------- |
+| `--bump <type>`    | `-b`  | Bump type: `patch`, `minor`, `major`, `prepatch`, `preminor`, `premajor`        |
+| `--message <msg>`  | `-m`  | Commit message                                                                  |
+| `--tag <tag>`      | `-t`  | Target tag for rollback                                                         |
+| `--projects <ids>` | `-p`  | Comma-separated project IDs (monorepo)                                          |
+| `--target <branch>`|       | Target release branch for promote (default: first in `releaseBranches`)         |
+| `--semantic`       | `-s`  | Force semantic changelog mode for this run                                      |
+| `--yes`            | `-y`  | Skip all prompts and confirmations, use defaults or provided flags              |
+| `--dry-run`        | `-d`  | Simulate the operation without writing or pushing                               |
+| `--version`        | `-v`  | Show VIT version                                                                |
+| `--help`           | `-h`  | Show help                                                                       |
+
+### Non-interactive mode (`--yes`)
+
+`--yes` (or `-y`) skips **all** prompts and confirmations, using the values provided via flags or their defaults:
+
+- Confirms all actions automatically.
+- Selects all configured projects if `--projects` is not specified.
+- Uses the default commit message if `--message` is not provided.
+- In non-semantic mode, skips the changelog step silently.
+- In semantic mode, regenerates the changelog automatically from git tags.
+
+> **Important:** `--yes` does not guess required values. You must still provide `--bump` for `release` and `--message` for `commit`. Without them, VIT will exit with an error.
+
+```bash
+# ✅ Correct
+vit release --bump patch --yes
+vit commit --message "fix: typo" --yes
+
+# ❌ Missing required flag
+vit release --yes          # --bump is required
+vit commit --yes           # --message is required
+```
 
 ### Behavior by level
 
-Each argument skips only its corresponding prompt; the rest of the interactive flow continues normally.
-
-| Command                                    | What is skipped                                                | What is still asked                         |
-| ------------------------------------------ | -------------------------------------------------------------- | ------------------------------------------- |
-| `vit release`                              | Main menu                                                      | Bump type, changelog, message, confirmation |
-| `vit release --bump patch`                 | Menu + bump type                                               | Changelog, message, confirmation            |
-| `vit release --bump patch --message "fix"` | Menu + bump + message                                          | Changelog, confirmation                     |
-| `vit release --bump patch --yes`           | Everything (full headless)                                     | Nothing                                     |
-| `vit commit --yes`                         | Everything (uses default message)                              | Nothing                                     |
-| `vit changelog --semantic --yes`           | Everything (uses commits per tag to regenerate full changelog) | Nothing                                     |
-| `vit rollback --tag v1.2.3`                | Menu + tag selector                                            | Confirmation                                |
-| `vit rollback --tag v1.2.3 --yes`          | Everything (full headless)                                     | Nothing                                     |
-
-> **Note:** `--yes` only activates full headless mode when combined with a command. Without `--yes`, each argument skips its own prompt but the rest of the flow remains interactive.
+| Command                                    | What is skipped                                                  | What is still asked                         |
+| ------------------------------------------ | ---------------------------------------------------------------- | ------------------------------------------- |
+| `vit release`                              | Main menu                                                        | Bump type, changelog, message, confirmation |
+| `vit release --bump patch`                 | Menu + bump type                                                 | Changelog, message, confirmation            |
+| `vit release --bump patch --message "fix"` | Menu + bump + message                                            | Changelog, confirmation                     |
+| `vit release --bump patch --yes`           | Everything                                                       | Nothing                                     |
+| `vit commit --message "fix" --yes`         | Everything                                                       | Nothing                                     |
+| `vit changelog --semantic --yes`           | Everything (regenerates full changelog from all tags)            | Nothing                                     |
+| `vit rollback --tag v1.2.3 --yes`          | Everything                                                       | Nothing                                     |
+| `vit promote --yes`                        | Everything (merges/promotes with defaults)                       | Nothing                                     |
+| `vit sync`                                 | Everything (always non-interactive)                              | Nothing                                     |
 
 ### Examples
 
@@ -154,13 +182,10 @@ vit release
 # Release with fixed bump, still asks for changelog and confirmation
 vit release --bump minor
 
-# Fully automated release (headless)
+# Fully non-interactive release
 vit release --bump patch --yes
 
-# Automated commit with default message
-vit commit --yes
-
-# Automated commit with custom message
+# Non-interactive commit with custom message
 vit commit --message "fix: typo" --yes
 
 # Rollback to a specific tag without confirmation
@@ -171,7 +196,73 @@ vit release --bump patch --dry-run
 
 # Release in monorepo for backend only
 vit release --bump patch --projects backend --yes
+
+# Promote prerelease branch into main (merge strategy)
+vit promote --yes
+
+# Promote into a specific target branch
+vit promote --target main --yes
+
+# Sync prerelease branches
+vit sync
+vit sync --dry-run
 ```
+
+---
+
+## Prerelease flow
+
+VIT has native support for prerelease branches. When you run `vit release` from a branch listed in `preReleaseBranches`, VIT automatically switches into prerelease mode.
+
+### First prerelease bump
+
+On the first release from a prerelease branch, VIT asks for the **magnitude of the upcoming stable release**:
+
+```
+? What magnitude will the final stable release be?
+  prepatch  — anticipates a patch  (x.x.+1-alpha.0)
+  preminor  — anticipates a minor  (x.+1.0-alpha.0)
+  premajor  — anticipates a major  (+1.0.0-alpha.0)
+```
+
+### Subsequent prerelease bumps
+
+Once a prerelease version exists, subsequent bumps on the same branch automatically use `prerelease`, incrementing the counter (e.g. `1.1.0-alpha.0` → `1.1.0-alpha.1`).
+
+### Prerelease changelog behaviour
+
+Prerelease iterations (`prepatch`, `preminor`, `premajor`, `prerelease`) **skip the changelog step** entirely. The changelog is only generated when the stable version is published via `promote`.
+
+In semantic mode, prerelease tags are not emitted as separate entries in the changelog. Their commits accumulate and are grouped under the next stable release entry.
+
+### Promote
+
+When you are ready to publish the stable version, use `promote` from the prerelease branch:
+
+```bash
+vit promote
+vit promote --yes
+vit promote --target main --yes
+```
+
+Promote:
+1. Bumps all targets to the stable version (strips the prerelease suffix).
+2. Runs the changelog step (if `semantic: true`, regenerates the full changelog).
+3. Merges or opens a PR into the target release branch, depending on `promoteStrategy`.
+4. Creates the stable tag.
+
+See [`git.promoteStrategy`](#gitpromotestrategy) for merge vs PR configuration.
+
+### Sync
+
+`vit sync` checks all branches listed in `preReleaseBranches` and merges any commits from their base release branch that are missing:
+
+```bash
+vit sync
+vit sync --dry-run
+```
+
+This is useful to keep prerelease branches up to date with hotfixes or other changes landed on `main`.
 
 ---
 
@@ -192,8 +283,11 @@ Create a `vit-config.json` file at the root of your project or run [`vit init`](
     "releaseCommitMessage": "chore: release",
     "changelogCommitMessage": "docs: update changelog",
     "strict": true,
-    "releaseBranches": [
-      "main"
+    "releaseBranches": ["main"],
+    "rollbackStrategy": "revert",
+    "promoteStrategy": "merge",
+    "preReleaseBranches": [
+      { "id": "alpha", "name": "alpha" }
     ]
   },
   "vcs": {
@@ -239,7 +333,14 @@ Commits that don't follow this format are automatically ignored.
 
 **Interactive flow** — VIT shows the detected commits, lets you deselect the ones you don't want to include, and optionally asks for an introductory text before saving.
 
-**Headless mode** — the changelog is silently regenerated without prompts.
+**With `--yes`** — the changelog is silently regenerated without prompts.
+
+**You can also force semantic mode for a single run** without changing `vit-config.json` using the `--semantic` flag:
+
+```bash
+vit changelog --semantic --yes
+vit release --bump minor --semantic --yes
+```
 
 ```json
 "changelog": {
@@ -251,14 +352,16 @@ Commits that don't follow this format are automatically ignored.
 
 ### `git`
 
-| Field                    | Type       | Default                  | Description                                                |
-| ------------------------ | ---------- | ------------------------ | ---------------------------------------------------------- |
-| `defaultCommitMessage`   | `string`   | `chore: update`          | Default message for commits without bump                   |
-| `releaseCommitMessage`   | `string`   | `chore: version bump`    | Default message for release commits                        |
-| `changelogCommitMessage` | `string`   | `docs: update changelog` | Default message for changelog commits                      |
-| `releaseBranches`        | `string[]` | `[]`                     | Branches from which releases are allowed                   |
-| `strict`                 | `boolean`  | `false`                  | If `true`, blocks the release when on a non-allowed branch |
-| `rollbackStrategy`       | `string`   | `"revert"`               | Rollback strategy: `"revert"` (default) or `"reset"`       |
+| Field                    | Type       | Default                  | Description                                                          |
+| ------------------------ | ---------- | ------------------------ | -------------------------------------------------------------------- |
+| `defaultCommitMessage`   | `string`   | `chore: update`          | Default message for commits without bump                             |
+| `releaseCommitMessage`   | `string`   | `chore: version bump`    | Default message for release commits                                  |
+| `changelogCommitMessage` | `string`   | `docs: update changelog` | Default message for changelog commits                                |
+| `releaseBranches`        | `string[]` | `[]`                     | Branches from which stable releases are allowed                      |
+| `strict`                 | `boolean`  | `false`                  | If `true`, blocks the release when on a non-allowed branch           |
+| `rollbackStrategy`       | `string`   | `"revert"`               | Rollback strategy: `"revert"` (default) or `"reset"`                 |
+| `promoteStrategy`        | `string`   | `"merge"`                | Promote strategy: `"merge"` (local merge) or `"pr"` (GitHub PR)      |
+| `preReleaseBranches`     | `array`    | `[]`                     | Branches treated as prerelease (see [Prerelease flow](#prerelease-flow)) |
 
 #### Branch control for releases
 
@@ -275,11 +378,11 @@ If you are on a non-allowed branch, VIT shows a warning and asks if you want to 
 ? Continue anyway? (y/N)
 ```
 
-With `--yes` or in headless mode, the warning is automatically accepted and the release continues.
+With `--yes`, the warning is automatically accepted and the release continues.
 
 **Strict mode** (`strict: true`)
 
-If you are on a non-allowed branch, the release is blocked and VIT exits with an error:
+If you are on a non-allowed branch, the release is blocked:
 
 ```
   BLOCKED   Releases are not allowed from branch "feat/my-feature".
@@ -288,20 +391,50 @@ If you are on a non-allowed branch, the release is blocked and VIT exits with an
 
 In `--dry-run` mode, strict blocking is ignored to allow simulations from any branch.
 
-**Example with multiple allowed branches:**
+#### `git.promoteStrategy`
+
+Controls how `vit promote` integrates the prerelease branch into the target release branch.
+
+| Value     | Behaviour                                                                                      |
+| --------- | ---------------------------------------------------------------------------------------------- |
+| `"merge"` | Merges the prerelease branch locally into the target branch and pushes. *(default)*            |
+| `"pr"`    | Opens a GitHub Pull Request from the prerelease branch into the target branch via the API.     |
+
+When `"pr"` is selected and a PR already exists for the same head/base pair, VIT **reuses it** (updates title and body) instead of creating a duplicate.
+
+The GitHub token must be available as `GITHUB_TOKEN` in the environment or via `envFile`:
 
 ```json
 "git": {
-  "releaseBranches": ["main", "release", "hotfix"],
-  "strict": true
-}
+  "promoteStrategy": "pr"
+},
+"envFile": ".env"
 ```
+
+```env
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+```
+
+#### `git.preReleaseBranches`
+
+List of branches that VIT treats as prerelease. Accepts strings or objects:
+
+```json
+"preReleaseBranches": [
+  "alpha",
+  { "id": "beta", "name": "beta" }
+]
+```
+
+- When on one of these branches, `vit release` automatically enters prerelease mode.
+- The `promote` command is only available from these branches.
+- Prerelease tags (e.g. `v1.1.0-alpha.0`) are excluded as standalone entries in the semantic changelog.
 
 #### Rollback strategy
 
 `rollbackStrategy` controls how VIT undoes changes when rolling back to a previous tag.
 
-Before executing any action, VIT always shows a **preview of the affected commits** along with the active strategy:
+Before executing, VIT always shows a **preview of the affected commits** and the active strategy:
 
 ```
   Commits that will be rolled back:  (strategy: revert)
@@ -314,17 +447,11 @@ Before executing any action, VIT always shows a **preview of the affected commit
   Target tag: v1.0.0 (3 commit(s) affected)
 ```
 
-**`"revert"` (default)** — creates a new commit that undoes the changes. The git history remains intact and a normal push without `--force` is possible. Recommended for shared repos with other collaborators.
+**`"revert"` (default)** — creates a new commit that undoes the changes. History intact, normal push possible.
 
-**`"reset"`** — moves the HEAD pointer to the target tag, rewriting history. Requires force push (`git push --force`). Use only on personal repos or your own branches.
+**`"reset"`** — moves HEAD to the target tag, rewriting history. Requires `git push --force`.
 
-```json
-"git": {
-  "rollbackStrategy": "revert"
-}
-```
-
-> **Note:** With the `reset` strategy, VIT also offers to delete the tags that were above the target tag, since they would point to commits that no longer exist in the local history.
+> With `reset`, VIT also offers to delete tags that were above the target tag.
 
 ### `vcs`
 
@@ -336,12 +463,12 @@ Before executing any action, VIT always shows a **preview of the affected commit
 
 Array of projects to manage. Useful for monorepos.
 
-| Field       | Type     | Description                                                  |
-| ----------- | -------- | ------------------------------------------------------------ |
-| `id`        | `string` | Unique project identifier                                    |
-| `label`     | `string` | Human-readable project name                                  |
-| `path`      | `string` | Relative path to the project directory                       |
-| `tagPrefix` | `string` | Prefix for git tags (`v` → `v1.2.3`, `vback` → `vback1.2.3`) |
+| Field       | Type     | Description                                                    |
+| ----------- | -------- | -------------------------------------------------------------- |
+| `id`        | `string` | Unique project identifier                                      |
+| `label`     | `string` | Human-readable project name                                    |
+| `path`      | `string` | Relative path to the project directory                         |
+| `tagPrefix` | `string` | Prefix for git tags (`v` → `v1.2.3`, `vback` → `vback1.2.3`)  |
 
 **Monorepo example:**
 
@@ -354,7 +481,7 @@ Array of projects to manage. Useful for monorepos.
 
 ### `types` (optional)
 
-Customize the commit types available in the changelog. They are merged with the default types.
+Customize the commit types available in the changelog.
 
 ```json
 "types": [
@@ -369,7 +496,7 @@ Default types included: `feat`, `fix`, `refactor`, `perf`, `revert`, `docs`, `st
 
 ### `envFile` (optional)
 
-Path to a global `.env` file whose variables will be available in **all** actions. Variables from the file have lower priority than `env` and `promptEnv` defined in each action.
+Path to a global `.env` file whose variables will be available in **all** actions.
 
 ```json
 {
@@ -377,7 +504,44 @@ Path to a global `.env` file whose variables will be available in **all** action
 }
 ```
 
-See [Environment variables and `envFile`](#environment-variables-and-envfile) for more details.
+---
+
+## Variable interpolation — `${VAR}`
+
+VIT supports `${VAR}` placeholder interpolation across **all string values** in `vit-config.json`. Variables are resolved from:
+
+1. `process.env` (environment variables already in scope)
+2. The global `envFile` (loaded before interpolation)
+
+This makes it easy to inject secrets, tokens or dynamic values without hardcoding them:
+
+```json
+{
+  "envFile": ".env",
+  "postActions": [
+    {
+      "id": "deploy",
+      "command": "scp ./dist ${DEPLOY_USER}@${SERVER_HOST}:/var/www"
+    }
+  ]
+}
+```
+
+```env
+DEPLOY_USER=deploy-bot
+SERVER_HOST=production.myserver.com
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+```
+
+### Built-in VIT variables
+
+VIT exposes a set of built-in variables automatically available in any config string:
+
+| Variable              | Value                                      |
+| --------------------- | ------------------------------------------ |
+| `${VIT_BRANCH}`       | Current git branch                         |
+| `${VIT_LAST_TAG}`     | Last git tag                               |
+| `${VIT_VERSION}`      | VIT version                                |
 
 ---
 
@@ -426,7 +590,7 @@ VIT allows you to run commands automatically before (`preActions`) and after (`p
 | `timeoutMs`       | `number`   | `null`        | Timeout in ms. `null` = no limit                                                 |
 | `envFile`         | `string`   | `null`        | Path to a `.env` specific to this action (higher priority than global `envFile`) |
 | `env`             | `object`   | `{}`          | Static environment variables (higher priority than `envFile`)                    |
-| `promptEnv`       | `array`    | `[]`          | Variables asked interactively to the user (highest priority)                     |
+| `promptEnv`       | `array`    | `[]`          | Variables asked interactively before running (highest priority)                  |
 | `pipeline`        | `array`    | `[]`          | Previous steps that enrich the command's environment                             |
 | `command`         | `string`   | —             | Main command to execute                                                          |
 
@@ -449,13 +613,13 @@ Allows asking for sensitive values (passwords, tokens) right before running the 
 ]
 ```
 
-> **Note:** `promptEnv` has the highest priority in VIT. This means that even when running VIT in headless mode, the process will stop until it receives user input.
+> **Note:** `promptEnv` has the highest priority in VIT. Even when running with `--yes`, the process will pause until it receives user input for any `promptEnv` variables.
 
 ---
 
 ## Environment variables and `envFile`
 
-VIT supports loading environment variables from `.env` files at two levels: **global** (for all actions) and **per action** (only for that action). Variables at the closer level take priority.
+VIT supports loading environment variables from `.env` files at two levels: **global** (for all actions) and **per action** (only for that action).
 
 ### Priority order (lower → higher)
 
@@ -465,7 +629,7 @@ process.env  →  global envFile  →  action envFile  →  action.env  →  pro
 
 ### Global `envFile`
 
-Defined at the root of `vit-config.json`. Its variables are available in all actions.
+Defined at the root of `vit-config.json`. Its variables are available in all actions and in `${VAR}` interpolation.
 
 ```json
 {
@@ -486,48 +650,13 @@ Defined inside a specific action. Overrides variables from the global `envFile` 
 }
 ```
 
-### Full example
-
-**`vit-config.json`:**
-
-```json
-{
-  "envFile": ".env",
-  "postActions": [
-    {
-      "id": "deploy",
-      "label": "Deploy to production",
-      "on": ["release"],
-      "envFile": ".env.production",
-      "command": "echo Deploying as ${DEPLOY_USER} in ${APP_ENV}"
-    }
-  ]
-}
-```
-
-**`.env`** (available for all actions):
-
-```env
-APP_ENV=development
-DEPLOY_USER=dev
-```
-
-**`.env.production`** (only for the `deploy` action, overrides `.env`):
-
-```env
-APP_ENV=production
-DEPLOY_USER=deploy-bot
-```
-
-In the `deploy` action, `APP_ENV` will be `production` and `DEPLOY_USER` will be `deploy-bot` because `.env.production` has priority over `.env`.
-
-> **Note:** `.env` files are parsed internally without needing to install `dotenv`. Comments (`# comment`), blank lines and values with single or double quotes are supported.
+> **Note:** `.env` files are parsed internally without needing `dotenv`. Comments (`# comment`), blank lines and quoted values are supported.
 
 ---
 
 ## Step pipeline
 
-The `pipeline` of an action is a list of commands that run **before** the main `command`. Each step can capture its stdout as an environment variable available to subsequent steps and to the final `command` via `${VAR}` interpolation.
+The `pipeline` of an action is a list of commands that run **before** the main `command`. Each step can capture its stdout as an environment variable available to subsequent steps and the final `command` via `${VAR}` interpolation.
 
 ```json
 "pipeline": [
@@ -558,27 +687,21 @@ The `pipeline` of an action is a list of commands that run **before** the main `
 | `showOutput`      | `boolean` | `false`         | Show stdout (usually unnecessary in pipeline steps) |
 | `timeoutMs`       | `number`  | `null`          | Timeout in ms                                       |
 
-> **Note:** Pipeline steps have `showOutput: false` by default because their purpose is to capture values. The main `command` of the action has `showOutput: true` by default.
-
 ---
 
 ## Pipeline vs. multiple actions
 
-This is the most important distinction when designing your configuration.
-
 ### Pipeline — steps inside an action
 
-- All steps **share the same accumulated environment**: what step 1 captures can be used by step 3 and the final `command`.
-- They run in series within the same action.
+- All steps **share the same accumulated environment**.
 - Their purpose is to **prepare dynamic data** to build the main command.
-- They have no `on`, `promptEnv` or `env` of their own — they inherit everything from the parent action.
+- They have no `on`, `promptEnv` or `env` of their own.
 
 ### Multiple actions — independent tasks
 
 - Each action has its own `on`, `cwd`, `env`, `envFile`, `promptEnv`, `showOutput` and `timeoutMs`.
-- Each one appears as a separate block with its own spinner and label in the UI.
+- Each one appears as a separate block with its own spinner in the UI.
 - **They do not share variables** between them.
-- They are conceptually distinct tasks: tests, build, deploy, notification…
 
 ### Practical rule
 
@@ -594,8 +717,6 @@ This is the most important distinction when designing your configuration.
 ## Advanced examples
 
 ### Docker build with automatic version tag
-
-Captures the version from `package.json` at runtime to correctly label the Docker image.
 
 ```json
 {
@@ -620,8 +741,6 @@ Captures the version from `package.json` at runtime to correctly label the Docke
 ---
 
 ### SCP deploy with password asked at runtime
-
-Combines `pipeline` to build the destination path and `promptEnv` to ask for the SSH password without storing it anywhere.
 
 ```json
 {
@@ -648,39 +767,7 @@ Combines `pipeline` to build the destination path and `promptEnv` to ask for the
 
 ---
 
-### Deploy with environment variables from file
-
-Uses `envFile` per action to load production credentials without exposing them in the config.
-
-```json
-{
-  "id": "deploy-production",
-  "label": "Deploy to production",
-  "on": ["release"],
-  "showOutput": true,
-  "envFile": ".env.production",
-  "pipeline": [
-    {
-      "command": "node -e \"process.stdout.write(require('./package.json').version)\"",
-      "captureAs": "VERSION"
-    }
-  ],
-  "command": "scp -r ./dist ${DEPLOY_USER}@${SERVER_HOST}:/var/www/releases/${VERSION}"
-}
-```
-
-**`.env.production`:**
-
-```env
-DEPLOY_USER=deploy-bot
-SERVER_HOST=production.myserver.com
-```
-
----
-
 ### Publish to npm only if the version doesn't exist yet
-
-Checks if the version is already published before running `npm publish`, avoiding errors in CI pipelines.
 
 ```json
 {
@@ -712,8 +799,6 @@ Checks if the version is already published before running `npm publish`, avoidin
 
 ### Slack notification on release
 
-Sends a message to a Slack channel with the published version, branch and date, using only `curl`.
-
 ```json
 {
   "id": "notify-slack",
@@ -744,28 +829,20 @@ Sends a message to a Slack channel with the published version, branch and date, 
 
 ### Full monorepo: preflight + tests + build + deploy + summary
 
-Full configuration example for a monorepo with backend and frontend.
-
 ```json
 {
   "git": {
     "strict": true,
-    "releaseBranches": ["main"]
+    "releaseBranches": ["main"],
+    "promoteStrategy": "merge",
+    "preReleaseBranches": [
+      { "id": "alpha", "name": "alpha" }
+    ]
   },
   "envFile": ".env",
   "projects": [
-    {
-      "id": "backend",
-      "label": "Backend",
-      "path": "./Backend",
-      "tagPrefix": "vback"
-    },
-    {
-      "id": "frontend",
-      "label": "Frontend",
-      "path": "./Frontend",
-      "tagPrefix": "vfront"
-    }
+    { "id": "backend",  "label": "Backend",  "path": "./Backend",  "tagPrefix": "vback" },
+    { "id": "frontend", "label": "Frontend", "path": "./Frontend", "tagPrefix": "vfront" }
   ],
   "preActions": [
     {
@@ -773,7 +850,6 @@ Full configuration example for a monorepo with backend and frontend.
       "label": "Backend tests",
       "on": ["release"],
       "cwd": "./Backend",
-      "continueOnError": false,
       "showOutput": true,
       "command": "npm test"
     },
@@ -782,7 +858,6 @@ Full configuration example for a monorepo with backend and frontend.
       "label": "Frontend build",
       "on": ["release"],
       "cwd": "./Frontend",
-      "continueOnError": false,
       "showOutput": true,
       "command": "npm run build"
     }
@@ -806,29 +881,6 @@ Full configuration example for a monorepo with backend and frontend.
         }
       ],
       "command": "sshpass -p ${SSH_PASS} ssh ${DEPLOY_USER}@${SERVER_HOST} \"cd /var/www && ./deploy.sh ${BACK_VERSION} ${FRONT_VERSION}\""
-    },
-    {
-      "id": "summary",
-      "label": "Release summary",
-      "on": ["release"],
-      "continueOnError": true,
-      "showOutput": false,
-      "pipeline": [
-        {
-          "command": "node -e \"process.stdout.write(require('./Backend/package.json').version)\"",
-          "captureAs": "BACK_VERSION"
-        },
-        {
-          "command": "node -e \"process.stdout.write(require('./Frontend/package.json').version)\"",
-          "captureAs": "FRONT_VERSION"
-        },
-        { "command": "git rev-parse --abbrev-ref HEAD", "captureAs": "BRANCH" },
-        {
-          "command": "node -e \"process.stdout.write(new Date().toISOString().slice(0,16).replace('T',' '))\"",
-          "captureAs": "DATE"
-        }
-      ],
-      "command": "node -e \"console.log('\\n  ✅ Release complete\\n  Backend  : v${BACK_VERSION}\\n  Frontend : v${FRONT_VERSION}\\n  Branch   : ${BRANCH}\\n  Date     : ${DATE}\\n')\""
     }
   ]
 }
