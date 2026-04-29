@@ -143,11 +143,11 @@ function matchesPreReleaseBranch(b) {
 const matchedPreReleaseBranch = branch ? matchesPreReleaseBranch(branch) : null;
 const isOnPreReleaseBranch = matchedPreReleaseBranch !== null;
 
-// preId derived from the branch config (used as --preid value)
+// preId is always a plain string used as --preid value (e.g. "alpha")
 const preId = isOnPreReleaseBranch
   ? typeof matchedPreReleaseBranch === "string"
     ? matchedPreReleaseBranch
-    : (matchedPreReleaseBranch?.id ?? matchedPreReleaseBranch?.name)
+    : String(matchedPreReleaseBranch?.id ?? matchedPreReleaseBranch?.name ?? "pre")
   : null;
 
 // ── Resolve action ──────────────────────────────────────────────────────────────────
@@ -582,8 +582,6 @@ if (accion === "release" || accion === "promote") {
   let bumpType;
 
   if (accion === "promote") {
-    // promote: version is derived from the current prerelease suffix, no bump needed
-    // e.g. 1.1.0-alpha.3 → 1.1.0  (the "minor" is already baked in)
     bumpType = "promote";
     const sample = configuredProjects.find((p) => targets.includes(p.id));
     if (sample) {
@@ -603,21 +601,21 @@ if (accion === "release" || accion === "promote") {
   } else {
     // accion === "release"
     if (isOnPreReleaseBranch) {
-      // ── Determine if this is the FIRST prerelease on this branch or a continuation
+      // Detect if already in a prerelease cycle for this branch:
+      // the package.json version has preId as one of its prerelease identifiers.
       let isFirstPrerelease = true;
       const sample = configuredProjects.find((p) => targets.includes(p.id));
-      if (sample) {
+      if (sample && preId) {
         try {
           const pkg = JSON.parse(
             readFileSync(resolve(sample.path, "package.json"), "utf-8"),
           );
           const parsed = semver.parse(pkg.version);
-          // If the current version already has this branch's preId as a prerelease
-          // identifier, we are iterating — not starting fresh.
+          // prerelease is an array like ["alpha", 0] — check for string match
           isFirstPrerelease =
             !parsed ||
             parsed.prerelease.length === 0 ||
-            !parsed.prerelease.includes(preId);
+            !parsed.prerelease.some((part) => String(part) === preId);
         } catch { /* non-fatal */ }
       }
 
@@ -635,7 +633,6 @@ if (accion === "release" || accion === "promote") {
         if (!cli.headless)
           console.log(chalk.dim(`  Bump pre-selected: ${chalk.cyan(bumpType)}\n`));
       } else if (isFirstPrerelease) {
-        // First prerelease on this branch: ask patch / minor / major magnitude
         console.log(
           chalk.dim(
             `  Pre-release branch ("${branch}"): choose the magnitude of the upcoming stable release.\n`,
@@ -648,15 +645,15 @@ if (accion === "release" || accion === "promote") {
             message: "What magnitude will the final stable release be?",
             choices: [
               {
-                name: "prepatch — anticipates a patch  (x.x.+1-" + preId + ".0)",
+                name: `prepatch — anticipates a patch  (x.x.+1-${preId}.0)`,
                 value: "prepatch",
               },
               {
-                name: "preminor — anticipates a minor  (x.+1.0-" + preId + ".0)",
+                name: `preminor — anticipates a minor  (x.+1.0-${preId}.0)`,
                 value: "preminor",
               },
               {
-                name: "premajor — anticipates a major  (+1.0.0-" + preId + ".0)",
+                name: `premajor — anticipates a major  (+1.0.0-${preId}.0)`,
                 value: "premajor",
               },
             ],
@@ -665,7 +662,7 @@ if (accion === "release" || accion === "promote") {
         ]);
         bumpType = ans.bumpType;
       } else {
-        // Subsequent iteration: always prerelease (bump only the numeric suffix)
+        // Already in this prerelease cycle — just iterate the numeric suffix
         bumpType = "prerelease";
         console.log(
           chalk.dim(
@@ -716,14 +713,6 @@ if (accion === "release" || accion === "promote") {
 }
 
 // ── Changelog step (shared by release, changelog, promote) ───────────────────────────
-/**
- * Runs the interactive changelog step.
- * Skipped when bumpType is a pre-type or in dry-run.
- * Returns true if a changelog entry was saved.
- *
- * @param {{ targets: string[], bumpType: string, preId: string|null }|null} currentBumpResult
- * @returns {Promise<boolean>}
- */
 async function runChangelogStep(currentBumpResult) {
   if (dryRun) {
     console.log(
@@ -785,7 +774,7 @@ async function runChangelogStep(currentBumpResult) {
         await editChangelog(config);
         return true;
       }
-      break; // "add" → falls through to runChangelog
+      break;
     }
   }
 
@@ -799,7 +788,6 @@ async function runChangelogStep(currentBumpResult) {
   return result?.saved === true;
 }
 
-// prerelease iterations never touch the changelog
 const isPreIteration =
   bumpResult?.bumpType === "prerelease" ||
   bumpResult?.bumpType === "prepatch" ||
