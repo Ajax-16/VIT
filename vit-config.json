@@ -10,11 +10,7 @@
     "changelogCommitMessage": "docs: update changelog",
     "strict": true,
     "releaseBranches": ["main"],
-    "preReleaseBranches": [
-      { "name": "beta" },
-      { "name": "alpha", "id": "alpha" },
-      { "name": "next", "id": "rc" }
-    ],
+    "preReleaseBranches": [{ "name": "alpha", "id": "alpha" }],
     "promoteStrategy": "pr"
   },
   "github": {
