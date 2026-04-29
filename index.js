@@ -748,6 +748,11 @@ async function runChangelogStep(currentBumpResult) {
     return false;
   }
 
+  // promote with --yes or headless always skips changelog unless --semantic is explicit
+  if (accion === "promote" && (cli.yes || cli.headless) && !cli.semantic) {
+    return false;
+  }
+
   let pendingTag;
   if ((accion === "release" || accion === "promote") && currentBumpResult) {
     try {
@@ -773,7 +778,7 @@ async function runChangelogStep(currentBumpResult) {
 
   let skipChangelog = false;
 
-  if (!semanticChangelog && !cli.headless) {
+  if (!semanticChangelog && !cli.headless && !cli.yes) {
     while (true) {
       const { action } = await inquirer.prompt([
         {
@@ -802,6 +807,9 @@ async function runChangelogStep(currentBumpResult) {
   }
 
   if (skipChangelog) return false;
+
+  // If --yes without --semantic, skip changelog silently
+  if (cli.yes && !cli.semantic) return false;
 
   const result = await runChangelog(config, {
     headless: cli.headless,
