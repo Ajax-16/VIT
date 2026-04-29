@@ -1,11 +1,12 @@
 import { jest } from "@jest/globals";
+import { resolve } from "path";
 
-const mockExistsSync   = jest.fn();
+const mockExistsSync = jest.fn();
 const mockReadFileSync = jest.fn();
 
 jest.unstable_mockModule("fs", () => ({
-  existsSync:    mockExistsSync,
-  readFileSync:  mockReadFileSync,
+  existsSync: mockExistsSync,
+  readFileSync: mockReadFileSync,
   writeFileSync: jest.fn(),
 }));
 
@@ -13,13 +14,13 @@ const { resolveVitBuiltins } = await import("../../lib/vit-vars.js");
 
 function makeVcs(overrides = {}) {
   return {
-    getCurrentBranch:    jest.fn().mockReturnValue("main"),
-    getCommitHash:       jest.fn().mockReturnValue("abc1234"),
-    getCommitAuthor:     jest.fn().mockReturnValue("John Doe"),
-    getLastCommitMessage:jest.fn().mockReturnValue("feat: cool"),
-    getLastTag:          jest.fn().mockReturnValue("v1.0.0"),
-    getTagCount:         jest.fn().mockReturnValue("5"),
-    getCommitCount:      jest.fn().mockReturnValue("3"),
+    getCurrentBranch: jest.fn().mockReturnValue("main"),
+    getCommitHash: jest.fn().mockReturnValue("abc1234"),
+    getCommitAuthor: jest.fn().mockReturnValue("John Doe"),
+    getLastCommitMessage: jest.fn().mockReturnValue("feat: cool"),
+    getLastTag: jest.fn().mockReturnValue("v1.0.0"),
+    getTagCount: jest.fn().mockReturnValue("5"),
+    getCommitCount: jest.fn().mockReturnValue("3"),
     ...overrides,
   };
 }
@@ -141,9 +142,11 @@ describe("resolveVitBuiltins", () => {
 
   // ── Monorepo per-project vars ────────────────────────────────────────────
   test("exposes version.<id> for each project", () => {
-    mockReadFileSync
-      .mockReturnValueOnce(JSON.stringify({ version: "0.0.1", name: "root" })) // actionCwd pkg
-      .mockReturnValueOnce(JSON.stringify({ version: "2.0.0", name: "backend" })); // project pkg
+    const backendPath = resolve(process.cwd(), "./backend", "package.json");
+    mockReadFileSync.mockImplementation((filePath) => {
+      if (filePath === backendPath) return JSON.stringify({ version: "2.0.0", name: "backend" });
+      return JSON.stringify({ version: "0.0.1", name: "root" });
+    });
 
     const projects = [{ id: "backend", path: "./backend" }];
     const builtins = resolveVitBuiltins(process.cwd(), projects, null);
