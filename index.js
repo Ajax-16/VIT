@@ -16,6 +16,7 @@ import { printPostActionsSummary, runPostActions } from "./lib/post-actions.js";
 import { printPreActionsSummary, runPreActions } from "./lib/pre-actions.js";
 import { parseArgs, printHelp, printVersion } from "./lib/cli.js";
 import { runInit } from "./lib/init.js";
+import semver from "semver";
 
 // ── Parse CLI args ──────────────────────────────────────────────────────────────────
 const cli = parseArgs();
@@ -123,22 +124,31 @@ if (cli.headless)
   );
 console.log();
 
-// ── Detect if current branch is a prerelease branch ────────────────────────────────
+// ── Detect if current branch is a prerelease branch ──────────────────────────────
 const preReleaseBranches = config.git?.preReleaseBranches ?? [];
 
 function matchesPreReleaseBranch(b) {
-  return preReleaseBranches.find((pattern) => {
-    const name = typeof pattern === "string" ? pattern : pattern?.name;
-    if (!name) return false;
-    const escaped = name
-      .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-      .replace(/\*/g, ".*");
-    return new RegExp(`^${escaped}$`).test(b);
-  }) ?? null;
+  return (
+    preReleaseBranches.find((pattern) => {
+      const name = typeof pattern === "string" ? pattern : pattern?.name;
+      if (!name) return false;
+      const escaped = name
+        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+        .replace(/\*/g, ".*");
+      return new RegExp(`^${escaped}$`).test(b);
+    }) ?? null
+  );
 }
 
 const matchedPreReleaseBranch = branch ? matchesPreReleaseBranch(branch) : null;
 const isOnPreReleaseBranch = matchedPreReleaseBranch !== null;
+
+// preId derived from the branch config (used as --preid value)
+const preId = isOnPreReleaseBranch
+  ? typeof matchedPreReleaseBranch === "string"
+    ? matchedPreReleaseBranch
+    : (matchedPreReleaseBranch?.id ?? matchedPreReleaseBranch?.name)
+  : null;
 
 // ── Resolve action ──────────────────────────────────────────────────────────────────
 let accion;
@@ -156,9 +166,13 @@ if (cli.headless) {
       name: "💾  Commit       — commit and push without bump",
       value: "commit",
     },
-    // promote only appears in the menu when on a prerelease branch
     ...(isOnPreReleaseBranch
-      ? [{ name: "⏫  Promote      — merge into main + stable release", value: "promote" }]
+      ? [
+          {
+            name: "⏫  Promote      — merge into main + stable release",
+            value: "promote",
+          },
+        ]
       : []),
     { name: "⏪  Rollback     — roll back to a tag", value: "rollback" },
     { name: "❌  Exit", value: "exit" },
@@ -195,7 +209,7 @@ if (
 // ── Branch guard (release only) ─────────────────────────────────────────────────────
 if (accion === "release" && branch) {
   if (isOnPreReleaseBranch) {
-    if (cli.bump && cli.bump !== "prerelease") {
+    if (cli.bump && !["prepatch", "preminor", "premajor", "prerelease"].includes(cli.bump)) {
       console.log(
         "\n" +
           chalk.bgRed.white.bold("  BLOCKED  ") +
@@ -205,7 +219,7 @@ if (accion === "release" && branch) {
           ) +
           "\n" +
           chalk.dim(
-            `  Only --bump prerelease (or no --bump) is valid from this branch.`,
+            `  Valid options from this branch: prepatch | preminor | premajor | prerelease`,
           ) +
           "\n" +
           chalk.dim(
@@ -275,7 +289,7 @@ if (accion === "release" && branch) {
   }
 }
 
-// ── Promote guard ───────────────────────────────────────────────────────────────────
+// ── Promote guard ────────────────────────────────────────────────────────────────────
 if (accion === "promote") {
   if (!isOnPreReleaseBranch) {
     console.log(
@@ -295,7 +309,7 @@ if (accion === "promote") {
   }
 }
 
-// ── Rollback ───────────────────────────────────────────────────────────────────────────
+// ── Rollback ─────────────────────────────────────────────────────────────────────────
 if (accion === "rollback") {
   const tags = vcs.getAllTags();
 
@@ -504,7 +518,7 @@ if (accion === "rollback") {
   process.exit(0);
 }
 
-// ── Release / Commit / Changelog / Promote ──────────────────────────────────────────
+// ── Release / Commit / Changelog / Promote ───────────────────────────────────────────
 let bumpResult = null;
 let changelogDone = false;
 let commitMessage = null;
@@ -568,88 +582,131 @@ if (accion === "release" || accion === "promote") {
   let bumpType;
 
   if (accion === "promote") {
-    // promote always targets a stable version — prerelease is not valid here
-    if (cli.bump) {
-      const valid = ["patch", "minor", "major"];
-      if (!valid.includes(cli.bump)) {
+    // promote: version is derived from the current prerelease suffix, no bump needed
+    // e.g. 1.1.0-alpha.3 → 1.1.0  (the "minor" is already baked in)
+    bumpType = "promote";
+    const sample = configuredProjects.find((p) => targets.includes(p.id));
+    if (sample) {
+      try {
+        const pkg = JSON.parse(
+          readFileSync(resolve(sample.path, "package.json"), "utf-8"),
+        );
+        const stableVer = getNextVersion(pkg.version, "promote");
         console.log(
-          chalk.red(
-            `\n  ✖ Invalid bump type "${cli.bump}" for promote. Use: patch | minor | major\n`,
+          chalk.dim(
+            `  Promote: ${chalk.cyan(pkg.version)} → ${chalk.green(stableVer)} (suffix stripped)\n`,
           ),
         );
-        process.exit(1);
-      }
-      bumpType = cli.bump;
-      if (!cli.headless)
-        console.log(chalk.dim(`  Bump pre-selected: ${chalk.cyan(bumpType)}\n`));
-    } else {
-      const ans = await inquirer.prompt([
-        {
-          type: "list",
-          name: "bumpType",
-          message: "Stable version bump type for promotion?",
-          choices: [
-            { name: "patch — Minor correction    (x.x.+1)", value: "patch" },
-            { name: "minor — New functionality  (x.+1.0)", value: "minor" },
-            { name: "major — Major change        (+1.0.0)", value: "major" },
-          ],
-          default: "patch",
-        },
-      ]);
-      bumpType = ans.bumpType;
+      } catch { /* non-fatal */ }
     }
     bumpResult = { targets, bumpType, preId: null };
-    if (!cli.headless)
-      console.log(
-        chalk.green(`\n  ✔ Bump configured: ${bumpType} → ${targets.join(", ")}\n`),
-      );
   } else {
     // accion === "release"
-    const preId = isOnPreReleaseBranch
-      ? typeof matchedPreReleaseBranch === "string"
-        ? matchedPreReleaseBranch
-        : (matchedPreReleaseBranch?.id ?? matchedPreReleaseBranch?.name)
-      : null;
-
     if (isOnPreReleaseBranch) {
-      bumpType = "prerelease";
-      console.log(
-        chalk.dim(
-          `  Pre-release branch ("${branch}"): bump forced to ${chalk.cyan("prerelease")}\n`,
-        ),
-      );
-    } else if (cli.bump) {
-      const valid = ["patch", "minor", "major"];
-      if (!valid.includes(cli.bump)) {
+      // ── Determine if this is the FIRST prerelease on this branch or a continuation
+      let isFirstPrerelease = true;
+      const sample = configuredProjects.find((p) => targets.includes(p.id));
+      if (sample) {
+        try {
+          const pkg = JSON.parse(
+            readFileSync(resolve(sample.path, "package.json"), "utf-8"),
+          );
+          const parsed = semver.parse(pkg.version);
+          // If the current version already has this branch's preId as a prerelease
+          // identifier, we are iterating — not starting fresh.
+          isFirstPrerelease =
+            !parsed ||
+            parsed.prerelease.length === 0 ||
+            !parsed.prerelease.includes(preId);
+        } catch { /* non-fatal */ }
+      }
+
+      if (cli.bump) {
+        const validPre = ["prepatch", "preminor", "premajor", "prerelease"];
+        if (!validPre.includes(cli.bump)) {
+          console.log(
+            chalk.red(
+              `\n  ✖ Invalid bump "${cli.bump}" on prerelease branch. Use: prepatch | preminor | premajor | prerelease\n`,
+            ),
+          );
+          process.exit(1);
+        }
+        bumpType = cli.bump;
+        if (!cli.headless)
+          console.log(chalk.dim(`  Bump pre-selected: ${chalk.cyan(bumpType)}\n`));
+      } else if (isFirstPrerelease) {
+        // First prerelease on this branch: ask patch / minor / major magnitude
         console.log(
-          chalk.red(
-            `\n  ✖ Invalid bump type "${cli.bump}". Use: patch | minor | major\n`,
+          chalk.dim(
+            `  Pre-release branch ("${branch}"): choose the magnitude of the upcoming stable release.\n`,
           ),
         );
-        process.exit(1);
+        const ans = await inquirer.prompt([
+          {
+            type: "list",
+            name: "bumpType",
+            message: "What magnitude will the final stable release be?",
+            choices: [
+              {
+                name: "prepatch — anticipates a patch  (x.x.+1-" + preId + ".0)",
+                value: "prepatch",
+              },
+              {
+                name: "preminor — anticipates a minor  (x.+1.0-" + preId + ".0)",
+                value: "preminor",
+              },
+              {
+                name: "premajor — anticipates a major  (+1.0.0-" + preId + ".0)",
+                value: "premajor",
+              },
+            ],
+            default: "preminor",
+          },
+        ]);
+        bumpType = ans.bumpType;
+      } else {
+        // Subsequent iteration: always prerelease (bump only the numeric suffix)
+        bumpType = "prerelease";
+        console.log(
+          chalk.dim(
+            `  Pre-release branch ("${branch}"): iterating prerelease → bump forced to ${chalk.cyan("prerelease")}\n`,
+          ),
+        );
       }
-      bumpType = cli.bump;
-      if (!cli.headless)
-        console.log(chalk.dim(`  Bump pre-selected: ${chalk.cyan(bumpType)}\n`));
     } else {
-      const ans = await inquirer.prompt([
-        {
-          type: "list",
-          name: "bumpType",
-          message: "What type of bump?",
-          choices: [
-            { name: "patch — Minor correction    (x.x.+1)", value: "patch" },
-            { name: "minor — New functionality  (x.+1.0)", value: "minor" },
-            { name: "major — Major change        (+1.0.0)", value: "major" },
-          ],
-          default: "patch",
-        },
-      ]);
-      bumpType = ans.bumpType;
+      if (cli.bump) {
+        const valid = ["patch", "minor", "major"];
+        if (!valid.includes(cli.bump)) {
+          console.log(
+            chalk.red(
+              `\n  ✖ Invalid bump type "${cli.bump}". Use: patch | minor | major\n`,
+            ),
+          );
+          process.exit(1);
+        }
+        bumpType = cli.bump;
+        if (!cli.headless)
+          console.log(chalk.dim(`  Bump pre-selected: ${chalk.cyan(bumpType)}\n`));
+      } else {
+        const ans = await inquirer.prompt([
+          {
+            type: "list",
+            name: "bumpType",
+            message: "What type of bump?",
+            choices: [
+              { name: "patch — Minor correction    (x.x.+1)", value: "patch" },
+              { name: "minor — New functionality  (x.+1.0)", value: "minor" },
+              { name: "major — Major change        (+1.0.0)", value: "major" },
+            ],
+            default: "patch",
+          },
+        ]);
+        bumpType = ans.bumpType;
+      }
     }
 
     bumpResult = { targets, bumpType, preId };
-    if (!cli.headless && !cli.bump)
+    if (!cli.headless && accion === "release" && !isOnPreReleaseBranch && !cli.bump)
       console.log(
         chalk.green(
           `\n  ✔ Bump configured: ${bumpType} → ${targets.join(", ")}\n`,
@@ -658,10 +715,10 @@ if (accion === "release" || accion === "promote") {
   }
 }
 
-// ── Changelog step (shared by release, changelog, promote) ──────────────────────────
+// ── Changelog step (shared by release, changelog, promote) ───────────────────────────
 /**
  * Runs the interactive changelog step.
- * Skipped when bumpType is "prerelease" or in dry-run.
+ * Skipped when bumpType is a pre-type or in dry-run.
  * Returns true if a changelog entry was saved.
  *
  * @param {{ targets: string[], bumpType: string, preId: string|null }|null} currentBumpResult
@@ -680,7 +737,7 @@ async function runChangelogStep(currentBumpResult) {
   }
 
   let pendingTag;
-  if (accion === "release" && currentBumpResult) {
+  if ((accion === "release" || accion === "promote") && currentBumpResult) {
     try {
       const selectedProjects = config.projects.filter((p) =>
         currentBumpResult.targets.includes(p.id),
@@ -742,14 +799,21 @@ async function runChangelogStep(currentBumpResult) {
   return result?.saved === true;
 }
 
+// prerelease iterations never touch the changelog
+const isPreIteration =
+  bumpResult?.bumpType === "prerelease" ||
+  bumpResult?.bumpType === "prepatch" ||
+  bumpResult?.bumpType === "preminor" ||
+  bumpResult?.bumpType === "premajor";
+
 if (
   (accion === "release" || accion === "changelog" || accion === "promote") &&
-  bumpResult?.bumpType !== "prerelease"
+  !isPreIteration
 ) {
   changelogDone = await runChangelogStep(bumpResult);
 }
 
-// ── Commit message ────────────────────────────────────────────────────────────────────
+// ── Commit message ─────────────────────────────────────────────────────────────────
 if (accion !== "changelog") {
   const defaultMsg =
     accion === "release" || accion === "promote"
@@ -781,7 +845,7 @@ if (accion !== "changelog") {
   }
 }
 
-// ── Summary ────────────────────────────────────────────────────────────────────────────
+// ── Summary ────────────────────────────────────────────────────────────────────────
 console.log("\n" + chalk.bold("  Operation summary:"));
 console.log(chalk.dim("  ─────────────────────────────"));
 console.log(`  Action    : ${chalk.cyan(accion)}`);
@@ -799,13 +863,15 @@ if (accion === "promote") {
 if (commitMessage) console.log(`  Message   : ${chalk.cyan(commitMessage)}`);
 console.log(
   `  Changelog : ${
-    semanticChangelog
-      ? changelogDone
-        ? chalk.magenta("semantic — fully regenerated")
-        : chalk.dim("semantic — skipped")
-      : changelogDone
-        ? chalk.green("manual — entry added")
-        : chalk.dim("none")
+    isPreIteration
+      ? chalk.dim("skipped (prerelease iteration)")
+      : semanticChangelog
+        ? changelogDone
+          ? chalk.magenta("semantic — fully regenerated")
+          : chalk.dim("semantic — skipped")
+        : changelogDone
+          ? chalk.green("manual — entry added")
+          : chalk.dim("none")
   }`,
 );
 
@@ -813,7 +879,7 @@ printPreActionsSummary(config, accion === "promote" ? "release" : accion);
 printPostActionsSummary(config, accion === "promote" ? "release" : accion);
 console.log();
 
-// ── Confirm & Execute ─────────────────────────────────────────────────────────────────
+// ── Confirm & Execute ─────────────────────────────────────────────────────────────
 if (accion === "changelog") {
   if (!vcs.supportsCommit()) {
     console.log(
@@ -880,7 +946,7 @@ if (accion === "changelog") {
   }
 }
 
-// ── Run ───────────────────────────────────────────────────────────────────────────────
+// ── Run ───────────────────────────────────────────────────────────────────────────
 try {
   await runPreActions(config, accion === "promote" ? "release" : accion);
 } catch (err) {
@@ -935,7 +1001,7 @@ try {
         chalk.dim(`  [dry-run] merge  : ${branch} → ${targetBranch} (not executed)`),
       );
       console.log(
-        chalk.dim(`  [dry-run] bump   : ${bumpResult.bumpType} on ${bumpResult.targets.join(", ")} (not executed)`),
+        chalk.dim(`  [dry-run] bump   : promote (strip suffix) on ${bumpResult.targets.join(", ")} (not executed)`),
       );
       console.log(chalk.dim(`  [dry-run] push   : skipped`));
     } else {
@@ -953,7 +1019,7 @@ try {
 
       const result = await bump({
         targets: bumpResult.targets,
-        bumpType: bumpResult.bumpType,
+        bumpType: "promote",
         message: commitMessage,
         preId: null,
         config,
