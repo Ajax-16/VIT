@@ -2,16 +2,19 @@
 
 ## [v-0.0.36] - 29/04/2026
 
+> Changelog generation is now smarter: the file is only fully regenerated when starting from scratch. Subsequent releases prepend only the new section, preserving any manual or mixed entries already in the file.
+
 ### 🚀 Features
 
 - *(changelog)* smart prepend — regenerate only when file is empty or has no sections, otherwise prepend latest tag section
-
 
 ### 🐛 Bug fixes
 
 - *(changelog)* prependToChangelog - deduplicate sections and robust header stripping
 
+### ⚡ Performance
 
+- *(changelog)* Changelog generation is now faster: instead of parsing the entire git history on every run, only the commits since the last stable tag are fetched and processed. Full history traversal is reserved for the initial generation.
 
 ## [v-0.0.35] - 29/04/2026
 
