@@ -51,6 +51,19 @@ function gitDateOutput(date = "2024-01-15") {
   return `${date} 12:00:00 +0000`;
 }
 
+// ── changelog file helpers ────────────────────────────────────────────────────
+/** Simulate a file with existing ## sections */
+function mockChangelogWithSections(content = "# Changelog\n\n## [v1.0.0] - 01/01/2024\n\n### 🚀 Features\n\n- existing feature\n\n") {
+  mockExistsSync.mockReturnValue(true);
+  mockReadFileSync.mockReturnValue(content);
+}
+
+/** Simulate a file that is absent or has no ## sections */
+function mockChangelogEmpty() {
+  mockExistsSync.mockReturnValue(false);
+  mockReadFileSync.mockReturnValue("");
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 describe("parseAllTagsWithCommits", () => {
   beforeEach(() => mockExecSync.mockReset());
@@ -160,88 +173,134 @@ describe("parseCommitsSinceLastTag", () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-describe("buildSemanticChangelogAuto (MODE 4)", () => {
+describe("buildSemanticChangelogAuto", () => {
   beforeEach(() => {
     mockExecSync.mockReset();
     mockWriteFileSync.mockReset();
-    mockExistsSync.mockReturnValue(false);
   });
 
-  test("returns { saved: false } when no tags exist", async () => {
-    mockExecSync.mockReturnValue("");
-    const result = await buildSemanticChangelogAuto(BASE_CONFIG);
-    expect(result.saved).toBe(false);
-    expect(mockWriteFileSync).not.toHaveBeenCalled();
+  describe("empty/absent changelog → full regeneration", () => {
+    beforeEach(() => mockChangelogEmpty());
+
+    test("returns { saved: false } when no tags exist", async () => {
+      mockExecSync.mockReturnValue("");
+      const result = await buildSemanticChangelogAuto(BASE_CONFIG);
+      expect(result.saved).toBe(false);
+      expect(mockWriteFileSync).not.toHaveBeenCalled();
+    });
+
+    test("writes full file when tags exist", async () => {
+      mockExecSync
+        .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
+        .mockReturnValueOnce(gitDateOutput())
+        .mockReturnValueOnce(gitLogOutput("feat: feature", "fix: bug"));
+      const result = await buildSemanticChangelogAuto(BASE_CONFIG);
+      expect(result.saved).toBe(true);
+      expect(mockWriteFileSync).toHaveBeenCalledTimes(1);
+    });
+
+    test("written content starts with # Changelog", async () => {
+      mockExecSync
+        .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
+        .mockReturnValueOnce(gitDateOutput())
+        .mockReturnValueOnce(gitLogOutput("feat: a"));
+      await buildSemanticChangelogAuto(BASE_CONFIG);
+      expect(mockWriteFileSync.mock.calls[0][1]).toMatch(/^# Changelog/);
+    });
+
+    test("includes version tag and date in content", async () => {
+      mockExecSync
+        .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
+        .mockReturnValueOnce(gitDateOutput("2024-03-15"))
+        .mockReturnValueOnce(gitLogOutput("feat: something"));
+      await buildSemanticChangelogAuto(BASE_CONFIG);
+      const written = mockWriteFileSync.mock.calls[0][1];
+      expect(written).toContain("v1.0.0");
+      expect(written).toContain("15/03/2024");
+    });
+
+    test("groups commits by type", async () => {
+      mockExecSync
+        .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
+        .mockReturnValueOnce(gitDateOutput())
+        .mockReturnValueOnce(
+          gitLogOutput("feat: thing", "fix: bug", "feat: another"),
+        );
+      await buildSemanticChangelogAuto(BASE_CONFIG);
+      const written = mockWriteFileSync.mock.calls[0][1];
+      expect(written).toContain("🚀 Features");
+      expect(written).toContain("🐛 Bug fixes");
+      expect(written.indexOf("🚀 Features")).toBeLessThan(written.indexOf("🐛 Bug fixes"));
+    });
+
+    test("pendingTag appears before existing tags", async () => {
+      mockExecSync
+        .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
+        .mockReturnValueOnce(gitLogOutput("feat: pending"))
+        .mockReturnValueOnce(gitDateOutput())
+        .mockReturnValueOnce(gitLogOutput("feat: initial"));
+      await buildSemanticChangelogAuto(BASE_CONFIG, { pendingTag: "v1.1.0" });
+      const written = mockWriteFileSync.mock.calls[0][1];
+      expect(written.indexOf("v1.1.0")).toBeLessThan(written.indexOf("v1.0.0"));
+    });
+
+    test("custom changelog title is used", async () => {
+      const cfg = { ...BASE_CONFIG, changelog: { ...BASE_CONFIG.changelog, title: "My Log" } };
+      mockExecSync
+        .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
+        .mockReturnValueOnce(gitDateOutput())
+        .mockReturnValueOnce(gitLogOutput("feat: x"));
+      await buildSemanticChangelogAuto(cfg);
+      expect(mockWriteFileSync.mock.calls[0][1]).toContain("# My Log");
+    });
   });
 
-  test("writes file when tags exist", async () => {
-    mockExecSync
-      .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
-      .mockReturnValueOnce(gitDateOutput())
-      .mockReturnValueOnce(gitLogOutput("feat: feature", "fix: bug"));
-    const result = await buildSemanticChangelogAuto(BASE_CONFIG);
-    expect(result.saved).toBe(true);
-    expect(mockWriteFileSync).toHaveBeenCalledTimes(1);
-  });
+  describe("existing changelog with sections → incremental prepend", () => {
+    beforeEach(() => mockChangelogWithSections());
 
-  test("written content starts with # Changelog", async () => {
-    mockExecSync
-      .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
-      .mockReturnValueOnce(gitDateOutput())
-      .mockReturnValueOnce(gitLogOutput("feat: a"));
-    await buildSemanticChangelogAuto(BASE_CONFIG);
-    expect(mockWriteFileSync.mock.calls[0][1]).toMatch(/^# Changelog/);
-  });
+    test("calls writeFileSync (via prependToChangelog) with the new section", async () => {
+      mockExecSync
+        .mockReturnValueOnce(gitTagsOutput("v1.1.0", "v1.0.0"))
+        // getLatestTagEntry: getTagDate(v1.1.0)
+        .mockReturnValueOnce(gitDateOutput("2024-06-01"))
+        // getLatestTagEntry: getCommitsBetween(v1.0.0, v1.1.0)
+        .mockReturnValueOnce(gitLogOutput("feat: new thing"));
+      const result = await buildSemanticChangelogAuto(BASE_CONFIG);
+      expect(result.saved).toBe(true);
+      expect(mockWriteFileSync).toHaveBeenCalledTimes(1);
+    });
 
-  test("includes version tag in content", async () => {
-    mockExecSync
-      .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
-      .mockReturnValueOnce(gitDateOutput("2024-03-15"))
-      .mockReturnValueOnce(gitLogOutput("feat: something"));
-    await buildSemanticChangelogAuto(BASE_CONFIG);
-    const written = mockWriteFileSync.mock.calls[0][1];
-    expect(written).toContain("v1.0.0");
-    expect(written).toContain("15/03/2024");
-  });
+    test("prepended content contains the new tag", async () => {
+      mockExecSync
+        .mockReturnValueOnce(gitTagsOutput("v1.1.0", "v1.0.0"))
+        .mockReturnValueOnce(gitDateOutput("2024-06-01"))
+        .mockReturnValueOnce(gitLogOutput("feat: new thing"));
+      await buildSemanticChangelogAuto(BASE_CONFIG);
+      const written = mockWriteFileSync.mock.calls[0][1];
+      expect(written).toContain("v1.1.0");
+    });
 
-  test("groups commits by type", async () => {
-    mockExecSync
-      .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
-      .mockReturnValueOnce(gitDateOutput())
-      .mockReturnValueOnce(
-        gitLogOutput("feat: thing", "fix: bug", "feat: another"),
-      );
-    await buildSemanticChangelogAuto(BASE_CONFIG);
-    const written = mockWriteFileSync.mock.calls[0][1];
-    expect(written).toContain("🚀 Features");
-    expect(written).toContain("🐛 Bug fixes");
-    expect(written.indexOf("🚀 Features")).toBeLessThan(
-      written.indexOf("🐛 Bug fixes"),
-    );
-  });
+    test("does NOT overwrite existing content — existing section still present", async () => {
+      mockExecSync
+        .mockReturnValueOnce(gitTagsOutput("v1.1.0", "v1.0.0"))
+        .mockReturnValueOnce(gitDateOutput("2024-06-01"))
+        .mockReturnValueOnce(gitLogOutput("feat: new thing"));
+      await buildSemanticChangelogAuto(BASE_CONFIG);
+      // prependToChangelog reads the file and writes the combined content
+      const written = mockWriteFileSync.mock.calls[0][1];
+      expect(written).toContain("v1.0.0"); // old section preserved
+      expect(written).toContain("v1.1.0"); // new section prepended
+    });
 
-  test("pendingTag appears before existing tags", async () => {
-    mockExecSync
-      .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
-      .mockReturnValueOnce(gitLogOutput("feat: pending"))
-      .mockReturnValueOnce(gitDateOutput())
-      .mockReturnValueOnce(gitLogOutput("feat: initial"));
-    await buildSemanticChangelogAuto(BASE_CONFIG, { pendingTag: "v1.1.0" });
-    const written = mockWriteFileSync.mock.calls[0][1];
-    expect(written.indexOf("v1.1.0")).toBeLessThan(written.indexOf("v1.0.0"));
-  });
-
-  test("custom changelog title is used", async () => {
-    const cfg = {
-      ...BASE_CONFIG,
-      changelog: { ...BASE_CONFIG.changelog, title: "My Log" },
-    };
-    mockExecSync
-      .mockReturnValueOnce(gitTagsOutput("v1.0.0"))
-      .mockReturnValueOnce(gitDateOutput())
-      .mockReturnValueOnce(gitLogOutput("feat: x"));
-    await buildSemanticChangelogAuto(cfg);
-    expect(mockWriteFileSync.mock.calls[0][1]).toContain("# My Log");
+    test("returns { saved: false } when latest tag has no matching commits", async () => {
+      mockExecSync
+        .mockReturnValueOnce(gitTagsOutput("v1.1.0", "v1.0.0"))
+        .mockReturnValueOnce(gitDateOutput("2024-06-01"))
+        .mockReturnValueOnce(gitLogOutput("chore: skip this")); // no known types
+      const result = await buildSemanticChangelogAuto(BASE_CONFIG);
+      expect(result.saved).toBe(false);
+      expect(mockWriteFileSync).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -250,7 +309,7 @@ describe("runChangelog dispatch", () => {
   beforeEach(() => {
     mockExecSync.mockReset();
     mockWriteFileSync.mockReset();
-    mockExistsSync.mockReturnValue(false);
+    mockChangelogEmpty();
   });
 
   test("MODE 2: non-semantic --yes → does NOT write file", async () => {
@@ -267,12 +326,9 @@ describe("runChangelog dispatch", () => {
     expect(mockWriteFileSync).toHaveBeenCalledTimes(1);
   });
 
-  test("MODE 3: semantic non-interactive without pendingTag → returns { saved: false } (no write)", async () => {
-    mockExecSync.mockReturnValue(""); // no tags → buildSemanticChangelogAuto returns saved:false
-    const result = await runChangelog(BASE_CONFIG, {
-      yes: false,
-      pendingTag: undefined,
-    });
+  test("MODE 3: semantic non-interactive without pendingTag → returns { saved: false } when no tags", async () => {
+    mockExecSync.mockReturnValue("");
+    const result = await runChangelog(BASE_CONFIG, { yes: false, pendingTag: undefined });
     expect(result).toMatchObject({ saved: false });
     expect(mockWriteFileSync).not.toHaveBeenCalled();
   });
