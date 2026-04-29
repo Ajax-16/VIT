@@ -1,5 +1,18 @@
 # Changelog
 
+## [v-0.0.36] - 29/04/2026
+
+### 🚀 Features
+
+- *(changelog)* smart prepend — regenerate only when file is empty or has no sections, otherwise prepend latest tag section
+
+
+### 🐛 Bug fixes
+
+- *(changelog)* prependToChangelog - deduplicate sections and robust header stripping
+
+
+
 ## [v-0.0.35] - 29/04/2026
 
 ### 🐛 Bug fixes
