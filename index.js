@@ -706,7 +706,7 @@ if (accion === "release" || accion === "promote") {
             message: "What type of bump?",
             choices: [
               { name: "patch — Minor correction    (x.x.+1)", value: "patch" },
-              { name: "minor — New functionality  (x.+1.0)", value: "minor" },
+              { name: "minor — New functionality   (x.+1.0)", value: "minor" },
               { name: "major — Major change        (+1.0.0)", value: "major" },
             ],
             default: "patch",

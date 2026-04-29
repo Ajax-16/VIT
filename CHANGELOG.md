@@ -1,17 +1,20 @@
 # Changelog
 
+## [v-0.0.38] - 29/04/2026
+
+### 🚀 Features
+
+- Added npm automatic publish
+
 ## [v-0.0.37] - 29/04/2026
 
 ### 🚀 Features
 
 - add 'prerelease' trigger to distinguish prerelease from stable release actions
 
-
 ### 🐛 Bug fixes
 
 - use resolveActionsTrigger to pass correct trigger (prerelease vs release) to pre/postActions
-
-
 
 ## [v-0.0.36] - 29/04/2026
 
@@ -19,15 +22,15 @@
 
 ### 🚀 Features
 
-- *(changelog)* smart prepend — regenerate only when file is empty or has no sections, otherwise prepend latest tag section
+- _(changelog)_ smart prepend — regenerate only when file is empty or has no sections, otherwise prepend latest tag section
 
 ### 🐛 Bug fixes
 
-- *(changelog)* prependToChangelog - deduplicate sections and robust header stripping
+- _(changelog)_ prependToChangelog - deduplicate sections and robust header stripping
 
 ### ⚡ Performance
 
-- *(changelog)* Changelog generation is now faster: instead of parsing the entire git history on every run, only the commits since the last stable tag are fetched and processed. Full history traversal is reserved for the initial generation.
+- _(changelog)_ Changelog generation is now faster: instead of parsing the entire git history on every run, only the commits since the last stable tag are fetched and processed. Full history traversal is reserved for the initial generation.
 
 ## [v-0.0.35] - 29/04/2026
 
