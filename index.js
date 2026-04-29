@@ -65,17 +65,17 @@ function printError(err) {
   const logFile = writeErrorLog(err);
   console.error(
     "\n" +
-      chalk.bgRed.white.bold("  ERROR  ") +
-      "  " +
-      chalk.red.bold(err.message) +
-      (err.original
-        ? "\n         " + chalk.dim("└─ " + err.original.message)
-        : "") +
-      "\n\n" +
-      chalk.dim("  Log guardado en:") +
-      "\n" +
-      chalk.cyan("  " + logFile) +
-      "\n",
+    chalk.bgRed.white.bold("  ERROR  ") +
+    "  " +
+    chalk.red.bold(err.message) +
+    (err.original
+      ? "\n         " + chalk.dim("└─ " + err.original.message)
+      : "") +
+    "\n\n" +
+    chalk.dim("  Log guardado en:") +
+    "\n" +
+    chalk.cyan("  " + logFile) +
+    "\n",
   );
 }
 
@@ -89,13 +89,13 @@ const promoteStrategy = config.git?.promoteStrategy ?? "merge";
 
 console.log(
   "\n" +
-    chalk.bgHex("#046c04").white.bold("  VIT  ") +
-    "  " +
-    chalk.hex("#046c04").bold("Version It!") +
-    "  " +
-    chalk.dim(`v${version}`) +
-    (dryRun ? "  " + chalk.bgYellow.black.bold(" DRY-RUN ") : "") +
-    "\n",
+  chalk.bgHex("#046c04").white.bold("  VIT  ") +
+  "  " +
+  chalk.hex("#046c04").bold("Version It!") +
+  "  " +
+  chalk.dim(`v${version}`) +
+  (dryRun ? "  " + chalk.bgYellow.black.bold(" DRY-RUN ") : "") +
+  "\n",
 );
 
 const branch = vcs.getCurrentBranch();
@@ -110,14 +110,14 @@ if (lastTag)
 if (semanticChangelog)
   console.log(
     chalk.dim(`  Changelog mode : `) +
-      chalk.magenta("semantic — full regeneration from git tags"),
+    chalk.magenta("semantic — automatically generated from commits"),
   );
 if (dryRun)
   console.log(
     chalk.dim(`  Mode           : `) +
-      chalk.yellow.bold(
-        "dry-run — no files, commits, tags or pushes will be made",
-      ),
+    chalk.yellow.bold(
+      "dry-run — no files, commits, tags or pushes will be made",
+    ),
   );
 console.log();
 
@@ -175,14 +175,14 @@ if (cli.yes && cli.command) {
     },
     ...(isOnPreReleaseBranch
       ? [
-          {
-            name:
-              "⏫  Promote      — " +
-              (promoteStrategy === "pr" ? "open PR to" : "merge into") +
-              " main + stable release",
-            value: "promote",
-          },
-        ]
+        {
+          name:
+            "⏫  Promote      — " +
+            (promoteStrategy === "pr" ? "open PR to" : "merge into") +
+            " main + stable release",
+          value: "promote",
+        },
+      ]
       : []),
     { name: "🔄  Sync         — sync prerelease branches with main", value: "sync" },
     { name: "⏪  Rollback     — roll back to a tag", value: "rollback" },
@@ -233,20 +233,20 @@ if (accion === "release" && branch) {
     if (cli.bump && !["prepatch", "preminor", "premajor", "prerelease"].includes(cli.bump)) {
       console.log(
         "\n" +
-          chalk.bgRed.white.bold("  BLOCKED  ") +
-          "  " +
-          chalk.red.bold(
-            `You are on a pre-release branch ("${branch}"). --bump ${cli.bump} is not allowed here.`,
-          ) +
-          "\n" +
-          chalk.dim(
-            `  Valid options from this branch: prepatch | preminor | premajor | prerelease`,
-          ) +
-          "\n" +
-          chalk.dim(
-            `  To do a stable release, use "vit promote" instead.`,
-          ) +
-          "\n",
+        chalk.bgRed.white.bold("  BLOCKED  ") +
+        "  " +
+        chalk.red.bold(
+          `You are on a pre-release branch ("${branch}"). --bump ${cli.bump} is not allowed here.`,
+        ) +
+        "\n" +
+        chalk.dim(
+          `  Valid options from this branch: prepatch | preminor | premajor | prerelease`,
+        ) +
+        "\n" +
+        chalk.dim(
+          `  To do a stable release, use "vit promote" instead.`,
+        ) +
+        "\n",
       );
       process.exit(1);
     }
@@ -259,29 +259,29 @@ if (accion === "release" && branch) {
       if (config.git.strict && !dryRun) {
         console.log(
           "\n" +
-            chalk.bgRed.white.bold("  BLOCKED  ") +
-            "  " +
-            chalk.red.bold(
-              `Releases are not allowed from branch "${branch}".`,
-            ) +
-            "\n" +
-            chalk.dim(`  Allowed branches: ${allowed_list}`) +
-            "\n",
+          chalk.bgRed.white.bold("  BLOCKED  ") +
+          "  " +
+          chalk.red.bold(
+            `Releases are not allowed from branch "${branch}".`,
+          ) +
+          "\n" +
+          chalk.dim(`  Allowed branches: ${allowed_list}`) +
+          "\n",
         );
         process.exit(1);
       } else {
         const isDryRunBypass = dryRun && config.git.strict;
         console.log(
           "\n" +
-            chalk.bgYellow.black.bold("  WARNING  ") +
-            "  " +
-            chalk.yellow.bold(
-              `You are on branch "${branch}", not on a release branch.`,
-            ) +
-            (isDryRunBypass ? chalk.dim(" (strict bypassed in dry-run)") : "") +
-            "\n" +
-            chalk.dim(`  Configured release branches: ${allowed_list}`) +
-            "\n",
+          chalk.bgYellow.black.bold("  WARNING  ") +
+          "  " +
+          chalk.yellow.bold(
+            `You are on branch "${branch}", not on a release branch.`,
+          ) +
+          (isDryRunBypass ? chalk.dim(" (strict bypassed in dry-run)") : "") +
+          "\n" +
+          chalk.dim(`  Configured release branches: ${allowed_list}`) +
+          "\n",
         );
 
         if (!dryRun && !cli.yes) {
@@ -315,16 +315,16 @@ if (accion === "promote") {
   if (!isOnPreReleaseBranch) {
     console.log(
       "\n" +
-        chalk.bgRed.white.bold("  BLOCKED  ") +
-        "  " +
-        chalk.red.bold(`"promote" is only available from a prerelease branch.`) +
-        "\n" +
-        chalk.dim(
-          `  Current branch "${branch}" is not listed in preReleaseBranches.`,
-        ) +
-        "\n" +
-        chalk.dim(`  Switch to a prerelease branch before running promote.`) +
-        "\n",
+      chalk.bgRed.white.bold("  BLOCKED  ") +
+      "  " +
+      chalk.red.bold(`"promote" is only available from a prerelease branch.`) +
+      "\n" +
+      chalk.dim(
+        `  Current branch "${branch}" is not listed in preReleaseBranches.`,
+      ) +
+      "\n" +
+      chalk.dim(`  Switch to a prerelease branch before running promote.`) +
+      "\n",
     );
     process.exit(1);
   }
@@ -379,15 +379,15 @@ if (accion === "rollback") {
   const strategyLabel =
     rollbackStrategy === "reset"
       ? chalk.yellow.bold("reset") +
-        chalk.dim(" — rewrites history, force push will be needed")
+      chalk.dim(" — rewrites history, force push will be needed")
       : chalk.green.bold("revert") +
-        chalk.dim(" — creates a new commit, history preserved");
+      chalk.dim(" — creates a new commit, history preserved");
 
   console.log(
     "\n" +
-      chalk.bold("  Commits that will be rolled back:") +
-      "  " +
-      chalk.dim(`(strategy: ${rollbackStrategy})`),
+    chalk.bold("  Commits that will be rolled back:") +
+    "  " +
+    chalk.dim(`(strategy: ${rollbackStrategy})`),
   );
   console.log(chalk.dim("  ─────────────────────────────────────────────"));
   for (const subject of affectedCommits) {
@@ -397,8 +397,8 @@ if (accion === "rollback") {
   console.log(`  Strategy  : ${strategyLabel}`);
   console.log(
     `  Target tag: ${chalk.cyan(selectedTag)}` +
-      chalk.dim(` (${affectedCommits.length} commit(s) affected)`) +
-      "\n",
+    chalk.dim(` (${affectedCommits.length} commit(s) affected)`) +
+    "\n",
   );
 
   if (!cli.yes) {
@@ -867,21 +867,20 @@ if (accion === "promote") {
   const targetBranch = cli.target ?? config.git.releaseBranches?.[0] ?? "main";
   console.log(
     `  Promote   : ${chalk.cyan(branch)} → ${chalk.cyan(targetBranch)}  ` +
-      chalk.dim(`[strategy: ${promoteStrategy}]`),
+    chalk.dim(`[strategy: ${promoteStrategy}]`),
   );
 }
 if (commitMessage) console.log(`  Message   : ${chalk.cyan(commitMessage)}`);
 console.log(
-  `  Changelog : ${
-    isPreIteration
-      ? chalk.dim("skipped (prerelease iteration)")
-      : semanticChangelog
-        ? changelogDone
-          ? chalk.magenta("semantic — fully regenerated")
-          : chalk.dim("semantic — skipped")
-        : changelogDone
-          ? chalk.green("manual — entry added")
-          : chalk.dim("none")
+  `  Changelog : ${isPreIteration
+    ? chalk.dim("skipped (prerelease iteration)")
+    : semanticChangelog
+      ? changelogDone
+        ? chalk.magenta("semantic — automatically generated")
+        : chalk.dim("semantic — skipped")
+      : changelogDone
+        ? chalk.green("manual — entry added")
+        : chalk.dim("none")
   }`,
 );
 
@@ -1058,9 +1057,9 @@ try {
 if (dryRun) {
   console.log(
     "\n" +
-      chalk.yellow.bold(
-        "  ⚠  Dry-run finished. Nothing was written to disk, committed or pushed.",
-      ) +
-      "\n",
+    chalk.yellow.bold(
+      "  ⚠  Dry-run finished. Nothing was written to disk, committed or pushed.",
+    ) +
+    "\n",
   );
 }

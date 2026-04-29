@@ -26,7 +26,7 @@
         },
         "semantic": {
           "type": "boolean",
-          "description": "If true, the changelog is fully regenerated from git tags (semantic mode). If false, it is managed manually.",
+          "description": "If true, the changelog is generated from git tags (semantic mode). If false, it is managed manually.",
           "default": false
         }
       }
