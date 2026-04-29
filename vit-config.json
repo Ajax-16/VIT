@@ -14,7 +14,12 @@
       { "name": "beta" },
       { "name": "alpha", "id": "alpha" },
       { "name": "next", "id": "rc" }
-    ]
+    ],
+    "promoteStrategy": "pr"
+  },
+  "github": {
+    "token": "${GITHUB_TOKEN}",
+    "repo": "Ajax-16/VIT"
   },
   "vcs": {
     "provider": "git"
