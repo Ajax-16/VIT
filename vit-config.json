@@ -39,14 +39,6 @@
     }
   ],
   "postActions": [
-            {
-      "id": "pre built-in",
-      "label": "Test pre built-in",
-      "on": ["commit", "release"],
-      "continueOnError": false,
-      "showOutput": true,
-      "command": "node -e \"console.log('\\n- date: ${date}\\n- datetime: ${datetime}\\n- timestamp: ${timestamp}\\n- year: ${year}\\n- month: ${month}\\n- day: ${day}\\n- time: ${time}\\n- branch: ${branch}\\n- commit_hash: ${commit_hash}\\n- commit_author: ${commit_author}\\n- last_commit_message: ${last_commit_message}\\n- tag_count: ${tag_count}\\n- last_tag: ${last_tag}\\n- commit_count: ${commit_count}\\n- version: ${version}\\n- name: ${name}\\n- project_version: ${version.vit}\\n- project_name: ${name.vit}\\n- node_version: ${node_version}\\n- os: ${os}\\n- arch: ${arch}\\n- cwd: ${cwd}')\""
-    },
     {
       "id": "release-summary",
       "label": "Release summary",
