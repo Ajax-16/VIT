@@ -4,6 +4,9 @@
     "title": "Changelog",
     "semantic": true
   },
+  "vcs": {
+    "provider": "git"
+  },
   "git": {
     "defaultCommitMessage": "chore: update",
     "releaseCommitMessage": "chore: release",
@@ -11,14 +14,7 @@
     "strict": true,
     "releaseBranches": ["main"],
     "preReleaseBranches": [{ "name": "alpha", "id": "alpha" }],
-    "promoteStrategy": "pr"
-  },
-  "github": {
-    "token": "${GITHUB_TOKEN}",
-    "repo": "Ajax-16/VIT"
-  },
-  "vcs": {
-    "provider": "git"
+    "promoteStrategy": "merge"
   },
   "envFile": ".env",
   "projects": [
