@@ -1,5 +1,13 @@
 # Changelog
 
+## [v-0.1.1] - 30/04/2026
+
+### 🐛 Bug fixes
+
+- Added preReleaseBranches reference when trying to run a release in a not allowed branch
+
+
+
 ## [v-0.1.0] - 30/04/2026
 
 > Codebase restructured, unit tests added and first stable graduation from alpha
