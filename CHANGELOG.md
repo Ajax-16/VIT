@@ -1,5 +1,13 @@
 # Changelog
 
+## [v-0.0.39] - 30/04/2026
+
+### 🐛 Bug fixes
+
+- *(sync)* single fetch --tags, compare origin/ refs, pull pre-release before merge
+
+
+
 ## [v-0.0.38] - 29/04/2026
 
 ### 🚀 Features
