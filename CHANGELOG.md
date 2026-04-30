@@ -1,5 +1,28 @@
 # Changelog
 
+## [v-0.1.0] - 30/04/2026
+
+> Codebase restructured, unit tests added and first stable graduation from alpha
+
+### 🐛 Bug fixes
+
+- *(promote)* move dirty-tree check before changelog step
+
+
+### 🚜 Refactoring
+
+- *(index)* reduce to pure dispatcher (~60 lines)
+
+- *(commands)* add release, promote, changelog and sync command handlers
+
+- *(commands)* add shared helpers, rollback and commit command handlers
+
+- *(changelog)* use vcs adapter instead of hardcoded git calls
+
+- *(vcs)* add missing git operations to adapters; remove raw git() calls from sync/promote
+
+
+
 ## [v-0.0.39] - 30/04/2026
 
 ### 🐛 Bug fixes
