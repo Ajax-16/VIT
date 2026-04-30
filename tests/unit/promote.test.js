@@ -15,7 +15,7 @@ jest.unstable_mockModule('child_process', () => ({
   spawn: jest.fn(),
 }));
 
-// ── ora mock (already in __mocks__ but re-ensure) ────────────────────────────
+// ── ora mock ───────────────────────────────────────────────────────────────────
 const mockSpinner = { start: jest.fn(), succeed: jest.fn(), fail: jest.fn(), warn: jest.fn(), text: '' };
 mockSpinner.start.mockReturnValue(mockSpinner);
 
@@ -77,6 +77,9 @@ beforeEach(() => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('promoteMerge()', () => {
 
+  // Note: the dirty-tree check was moved to lib/commands/promote.js (runs
+  // before the changelog step). promoteMerge itself no longer calls isDirty().
+
   describe('dry-run', () => {
     test('does not call vcs.checkout or vcs.merge', async () => {
       const args = makeArgs();
@@ -102,31 +105,16 @@ describe('promoteMerge()', () => {
     });
   });
 
-  describe('dirty working tree', () => {
-    test('throws and does not proceed with checkout', async () => {
-      const args = makeArgs({ isDirty: jest.fn().mockReturnValue(true) });
-      await expect(promoteMerge(args)).rejects.toThrow('Dirty working tree');
-      expect(args.vcs.checkout).not.toHaveBeenCalled();
-    });
-
-    test('calls spinner.fail', async () => {
-      const args = makeArgs({ isDirty: jest.fn().mockReturnValue(true) });
-      try { await promoteMerge(args); } catch { /* expected */ }
-      expect(mockSpinner.fail).toHaveBeenCalled();
-    });
-  });
-
   describe('merge failure', () => {
     test('aborts merge and checks out original branch on error', async () => {
       const mergeError = new Error('merge conflict');
-      const vcs = makeVcs({ merge: jest.fn().mockRejectedValue(mergeError) });
-      // merge is sync in the real code — mock as throwing
+      const vcs = makeVcs();
       vcs.merge = jest.fn().mockImplementation(() => { throw mergeError; });
       const args = makeArgs();
       args.vcs = vcs;
       await expect(promoteMerge(args)).rejects.toThrow('merge conflict');
       expect(vcs.mergeAbort).toHaveBeenCalled();
-      expect(vcs.checkout).toHaveBeenCalledWith('alpha'); // back to original branch
+      expect(vcs.checkout).toHaveBeenCalledWith('alpha');
     });
   });
 
@@ -147,7 +135,6 @@ describe('promoteMerge()', () => {
     test('syncs prerelease branch back after pushing target', async () => {
       const args = makeArgs();
       await promoteMerge(args);
-      // Last checkout should be back to the prerelease branch
       const checkoutCalls = args.vcs.checkout.mock.calls.map(c => c[0]);
       expect(checkoutCalls).toContain('alpha');
     });
