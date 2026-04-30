@@ -15,17 +15,17 @@ const { runSync } = await import('../../lib/sync.js');
 // ── helpers ───────────────────────────────────────────────────────────────────
 function makeVcs(overrides = {}) {
   return {
-    isDirty:        jest.fn().mockReturnValue(false),
+    isDirty:          jest.fn().mockReturnValue(false),
     getCurrentBranch: jest.fn().mockReturnValue('main'),
-    fetchAll:       jest.fn(),
-    checkout:       jest.fn(),
-    pullFfOnly:     jest.fn(),
-    commitsBehind:  jest.fn().mockReturnValue(0),
-    getSha:         jest.fn().mockReturnValue('abc1234'),
-    merge:          jest.fn(),
-    mergeAbort:     jest.fn(),
-    resetHard:      jest.fn(),
-    push:           jest.fn(),
+    fetchAll:         jest.fn(),
+    checkout:         jest.fn(),
+    pullFfOnly:       jest.fn(),
+    commitsBehind:    jest.fn().mockReturnValue(0),
+    getSha:           jest.fn().mockReturnValue('abc1234'),
+    merge:            jest.fn(),
+    mergeAbort:       jest.fn(),
+    resetHard:        jest.fn(),
+    push:             jest.fn(),
     ...overrides,
   };
 }
@@ -70,7 +70,6 @@ describe('runSync()', () => {
       const vcs = makeVcs({ commitsBehind: jest.fn().mockReturnValue(0) });
       await runSync({ config: makeConfig(['alpha']), vcs, dryRun: false });
       expect(vcs.fetchAll).toHaveBeenCalledTimes(1);
-      // checkout should only be for pulling the release branch + returning to original
       const checkoutCalls = vcs.checkout.mock.calls.map(c => c[0]);
       expect(checkoutCalls).not.toContain('alpha');
     });
@@ -91,24 +90,30 @@ describe('runSync()', () => {
     });
 
     test('falls back to regular merge if ff-only fails', async () => {
-      let mergeCallCount = 0;
+      // sync.js flow for a branch that needs syncing:
+      //   1. merge('origin/alpha', { ffOnly: true })  — align local with remote (silent catch)
+      //   2. merge('main',         { ffOnly: true })  — first attempt (should fail here)
+      //   3. merge('main',         { message: ... })  — fallback regular merge
+      //
+      // We throw only when target === 'main' AND ffOnly is set, leaving call 1 pass.
       const vcs = makeVcs({
         commitsBehind: jest.fn().mockReturnValue(2),
         merge: jest.fn().mockImplementation((target, opts) => {
-          mergeCallCount++;
-          if (opts?.ffOnly && mergeCallCount === 1) throw new Error('not ff');
+          if (target === 'main' && opts?.ffOnly) throw new Error('not ff');
         }),
       });
       await runSync({ config: makeConfig(['alpha']), vcs, dryRun: false });
-      expect(vcs.merge).toHaveBeenCalledTimes(3); // 1 ff-only origin/alpha + 1 ff-only base fail + 1 regular merge
+      // calls: origin/alpha ff-only (ok) + main ff-only (fail) + main regular (ok)
+      expect(vcs.merge).toHaveBeenCalledTimes(3);
     });
 
     test('aborts and resets if both merge strategies fail (conflict)', async () => {
       const mergeError = new Error('conflict');
       const vcs = makeVcs({
         commitsBehind: jest.fn().mockReturnValue(2),
-        merge: jest.fn().mockImplementation((target, opts) => {
-          if (opts?.ffOnly || !opts?.ffOnly) throw mergeError;
+        // throw on any merge targeting main (both ff-only and regular)
+        merge: jest.fn().mockImplementation((target) => {
+          if (target === 'main') throw mergeError;
         }),
       });
       await runSync({ config: makeConfig(['alpha']), vcs, dryRun: false });
@@ -117,15 +122,14 @@ describe('runSync()', () => {
     });
 
     test('processes remaining branches even when one has a conflict', async () => {
-      let branchCount = 0;
+      // alpha: both merge strategies throw → conflict
+      // beta:  merges succeed normally
       const vcs = makeVcs({
         commitsBehind: jest.fn().mockReturnValue(1),
-        merge: jest.fn().mockImplementation(() => {
-          branchCount++;
-          if (branchCount <= 2) throw new Error('conflict'); // alpha fails
+        merge: jest.fn().mockImplementation((target) => {
+          if (target === 'main') throw new Error('conflict');
         }),
       });
-      // Two pre-release branches: alpha (conflict) + beta (ok)
       await runSync({ config: makeConfig(['alpha', 'beta']), vcs, dryRun: false });
       expect(vcs.checkout).toHaveBeenCalledWith('beta');
     });
@@ -142,9 +146,8 @@ describe('runSync()', () => {
     test('does NOT call vcs.merge for prerelease branches', async () => {
       const vcs = makeVcs({ commitsBehind: jest.fn().mockReturnValue(5) });
       await runSync({ config: makeConfig(['alpha']), vcs, dryRun: true });
-      // merge might be called for pulling release branch — but NOT for the prerelease sync itself
       const mergeCalls = vcs.merge.mock.calls.map(c => c[0]);
-      expect(mergeCalls).not.toContain('main'); // in dry-run the prerelease merge is skipped
+      expect(mergeCalls).not.toContain('main');
     });
 
     test('does NOT push', async () => {
@@ -158,7 +161,7 @@ describe('runSync()', () => {
     test('checks out original branch at the end even after sync', async () => {
       const vcs = makeVcs({
         getCurrentBranch: jest.fn().mockReturnValue('alpha'),
-        commitsBehind: jest.fn().mockReturnValue(1),
+        commitsBehind:    jest.fn().mockReturnValue(1),
       });
       await runSync({ config: makeConfig(['alpha']), vcs, dryRun: false });
       const checkoutCalls = vcs.checkout.mock.calls.map(c => c[0]);
